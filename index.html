@@ -1,0 +1,4359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <!-- =========================================================
+         HOKSTATION.GG
+         FILE 1 / 8 — index.html
+
+         SOURCE OF TRUTH
+         ---------------------------------------------------------
+         All other files MUST follow this HTML structure:
+         1. style.css
+         2. effects.css
+         3. config.js
+         4. app.js
+         5. data.js
+         6. features.js
+         7. account.js
+
+         IMPORTANT:
+         - HoKStation.gg is an independent community/data platform.
+         - It is NOT an official Honor of Kings / Tencent website.
+         - No WestJet logos, aircraft, livery, branding or imagery.
+         - WestJet is ONLY a color-palette inspiration.
+         - Readability and accessibility take priority over effects.
+         ========================================================= -->
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
+
+    <meta
+        name="theme-color"
+        content="#071018"
+    >
+
+    <meta
+        name="description"
+        content="HoKStation.gg — A premium Honor of Kings community, hero, build and data platform."
+    >
+
+    <meta
+        name="author"
+        content="HoKStation.gg"
+    >
+
+    <meta
+        name="robots"
+        content="index, follow"
+    >
+
+    <title>HoKStation.gg — Honor of Kings</title>
+
+    <!-- =========================================================
+         STYLESHEETS
+         ========================================================= -->
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="effects.css">
+
+    <!-- =========================================================
+         SIMPLE ORIGINAL FAVICON
+         ========================================================= -->
+
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23071018'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Arial' font-size='24' font-weight='700' fill='white'%3EHS%3C/text%3E%3C/svg%3E"
+    >
+
+</head>
+
+
+<body>
+
+<!-- =============================================================
+     ACCESSIBILITY
+     ============================================================= -->
+
+<a
+    class="skip-link"
+    href="#main-content"
+>
+    Skip to main content
+</a>
+
+
+<!-- =============================================================
+     GLOBAL APP LOADER
+     ============================================================= -->
+
+<div
+    id="app-loader"
+    class="app-loader"
+    aria-hidden="true"
+>
+
+    <div class="loader-shell">
+
+        <div
+            class="loader-mark"
+            aria-hidden="true"
+        >
+            HS
+        </div>
+
+        <div class="loader-content">
+
+            <span class="loader-brand">
+                HoKStation.gg
+            </span>
+
+            <span
+                id="loader-status"
+                class="loader-status"
+            >
+                Loading station...
+            </span>
+
+        </div>
+
+        <div
+            class="loader-progress"
+            role="progressbar"
+            aria-label="Loading"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+        >
+
+            <span id="loader-progress-bar"></span>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     TOAST SYSTEM
+     ============================================================= -->
+
+<div
+    id="toast-container"
+    class="toast-container"
+    aria-live="polite"
+    aria-atomic="true"
+></div>
+
+
+<!-- =============================================================
+     MODAL ROOT
+     ============================================================= -->
+
+<div
+    id="modal-root"
+    class="modal-root"
+    aria-hidden="true"
+></div>
+
+
+<!-- =============================================================
+     GLOBAL SEARCH PANEL
+     ============================================================= -->
+
+<div
+    id="global-search-panel"
+    class="search-panel"
+    aria-hidden="true"
+>
+
+    <div class="search-panel-inner">
+
+        <div class="search-panel-header">
+
+            <div>
+                <span class="eyebrow">
+                    HoKStation Search
+                </span>
+
+                <h2>
+                    Search the Station
+                </h2>
+            </div>
+
+            <button
+                id="search-close"
+                class="icon-button"
+                type="button"
+                aria-label="Close search"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div class="search-input-shell">
+
+            <span
+                class="search-icon"
+                aria-hidden="true"
+            >
+                ⌕
+            </span>
+
+            <input
+                id="global-search-input"
+                class="search-input"
+                type="search"
+                placeholder="Search heroes, builds, equipment, patches..."
+                autocomplete="off"
+                spellcheck="false"
+            >
+
+            <kbd>
+                ESC
+            </kbd>
+
+        </div>
+
+        <div
+            id="global-search-filters"
+            class="search-filters"
+        >
+
+            <button
+                class="filter-chip is-active"
+                type="button"
+                data-search-type="all"
+            >
+                All
+            </button>
+
+            <button
+                class="filter-chip"
+                type="button"
+                data-search-type="heroes"
+            >
+                Heroes
+            </button>
+
+            <button
+                class="filter-chip"
+                type="button"
+                data-search-type="equipment"
+            >
+                Equipment
+            </button>
+
+            <button
+                class="filter-chip"
+                type="button"
+                data-search-type="builds"
+            >
+                Builds
+            </button>
+
+            <button
+                class="filter-chip"
+                type="button"
+                data-search-type="patches"
+            >
+                Updates
+            </button>
+
+        </div>
+
+        <div
+            id="global-search-results"
+            class="search-results"
+        >
+
+            <div class="empty-state compact">
+
+                <span class="empty-icon">
+                    ⌕
+                </span>
+
+                <h3>
+                    Start searching
+                </h3>
+
+                <p>
+                    Search across the HoKStation database.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     MOBILE NAVIGATION
+     ============================================================= -->
+
+<div
+    id="mobile-navigation"
+    class="mobile-navigation"
+    aria-hidden="true"
+>
+
+    <div class="mobile-navigation-header">
+
+        <a
+            href="#home"
+            class="site-brand"
+            data-route="home"
+        >
+
+            <span class="brand-symbol">
+                HS
+            </span>
+
+            <span class="brand-text">
+
+                <span class="brand-name">
+                    HoKStation
+                </span>
+
+                <span class="brand-domain">
+                    .gg
+                </span>
+
+            </span>
+
+        </a>
+
+        <button
+            id="mobile-menu-close"
+            class="icon-button"
+            type="button"
+            aria-label="Close menu"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <nav
+        class="mobile-nav-links"
+        aria-label="Mobile navigation"
+    >
+
+        <a
+            href="#home"
+            class="mobile-nav-link is-active"
+            data-route="home"
+        >
+            <span>01</span>
+            Home
+        </a>
+
+        <a
+            href="#heroes"
+            class="mobile-nav-link"
+            data-route="heroes"
+        >
+            <span>02</span>
+            Heroes
+        </a>
+
+        <a
+            href="#builds"
+            class="mobile-nav-link"
+            data-route="builds"
+        >
+            <span>03</span>
+            Builds
+        </a>
+
+        <a
+            href="#equipment"
+            class="mobile-nav-link"
+            data-route="equipment"
+        >
+            <span>04</span>
+            Equipment
+        </a>
+
+        <a
+            href="#compare"
+            class="mobile-nav-link"
+            data-route="compare"
+        >
+            <span>05</span>
+            Compare
+        </a>
+
+        <a
+            href="#patches"
+            class="mobile-nav-link"
+            data-route="patches"
+        >
+            <span>06</span>
+            Updates
+        </a>
+
+        <a
+            href="#community"
+            class="mobile-nav-link"
+            data-route="community"
+        >
+            <span>07</span>
+            Community
+        </a>
+
+    </nav>
+
+    <div class="mobile-nav-footer">
+
+        <button
+            id="mobile-account-trigger"
+            class="secondary-button full-width"
+            type="button"
+        >
+            Account
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     ACCOUNT PANEL
+     ============================================================= -->
+
+<div
+    id="account-panel"
+    class="account-panel"
+    aria-hidden="true"
+>
+
+    <div class="account-panel-inner">
+
+        <div class="account-panel-header">
+
+            <div>
+
+                <span class="eyebrow">
+                    HoKStation Account
+                </span>
+
+                <h2>
+                    Your Station
+                </h2>
+
+            </div>
+
+            <button
+                id="account-close"
+                class="icon-button"
+                type="button"
+                aria-label="Close account"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <!-- Logged-out state -->
+
+        <div
+            id="account-guest-view"
+            class="account-view"
+        >
+
+            <div class="account-symbol">
+                HS
+            </div>
+
+            <h3>
+                Welcome to HoKStation
+            </h3>
+
+            <p>
+                Sign in to save builds, follow heroes,
+                manage bookmarks and participate in the community.
+            </p>
+
+            <div class="account-actions">
+
+                <button
+                    id="login-open"
+                    class="primary-button"
+                    type="button"
+                >
+                    Log In
+                </button>
+
+                <button
+                    id="register-open"
+                    class="secondary-button"
+                    type="button"
+                >
+                    Create Account
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- Logged-in state -->
+
+        <div
+            id="account-user-view"
+            class="account-view hidden"
+        >
+
+            <div class="profile-summary">
+
+                <div
+                    id="account-avatar"
+                    class="profile-avatar"
+                >
+                    ?
+                </div>
+
+                <div class="profile-summary-text">
+
+                    <strong id="account-display-name">
+                        User
+                    </strong>
+
+                    <span id="account-email">
+                        user@example.com
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="account-menu">
+
+                <button
+                    type="button"
+                    class="account-menu-item"
+                    data-account-route="profile"
+                >
+                    <span>Profile</span>
+                    <span>›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="account-menu-item"
+                    data-account-route="saved-builds"
+                >
+                    <span>Saved Builds</span>
+                    <span>›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="account-menu-item"
+                    data-account-route="favorites"
+                >
+                    <span>Favorites</span>
+                    <span>›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="account-menu-item"
+                    data-account-route="activity"
+                >
+                    <span>Activity</span>
+                    <span>›</span>
+                </button>
+
+                <button
+                    id="account-settings-open"
+                    type="button"
+                    class="account-menu-item"
+                >
+                    <span>Settings</span>
+                    <span>›</span>
+                </button>
+
+            </div>
+
+
+            <button
+                id="logout-button"
+                class="danger-button full-width"
+                type="button"
+            >
+                Log Out
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     AUTH MODAL
+     ============================================================= -->
+
+<div
+    id="auth-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card auth-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+    >
+
+        <button
+            id="auth-modal-close"
+            class="modal-close"
+            type="button"
+            aria-label="Close"
+        >
+            ×
+        </button>
+
+        <div class="auth-brand">
+            <span class="brand-symbol">
+                HS
+            </span>
+
+            <span>
+                HoKStation.gg
+            </span>
+        </div>
+
+        <div class="auth-tabs">
+
+            <button
+                class="auth-tab is-active"
+                type="button"
+                data-auth-tab="login"
+            >
+                Log In
+            </button>
+
+            <button
+                class="auth-tab"
+                type="button"
+                data-auth-tab="register"
+            >
+                Register
+            </button>
+
+        </div>
+
+
+        <!-- Login -->
+
+        <form
+            id="login-form"
+            class="auth-form"
+            data-auth-form="login"
+        >
+
+            <div class="modal-heading">
+
+                <span class="eyebrow">
+                    Welcome back
+                </span>
+
+                <h2 id="auth-modal-title">
+                    Log in to HoKStation
+                </h2>
+
+            </div>
+
+            <label class="field">
+
+                <span>
+                    Email
+                </span>
+
+                <input
+                    id="login-email"
+                    type="email"
+                    name="email"
+                    autocomplete="email"
+                    required
+                >
+
+            </label>
+
+            <label class="field">
+
+                <span>
+                    Password
+                </span>
+
+                <input
+                    id="login-password"
+                    type="password"
+                    name="password"
+                    autocomplete="current-password"
+                    required
+                >
+
+            </label>
+
+            <button
+                type="submit"
+                class="primary-button full-width"
+            >
+                Log In
+            </button>
+
+            <button
+                id="forgot-password-open"
+                type="button"
+                class="text-button"
+            >
+                Forgot password?
+            </button>
+
+        </form>
+
+
+        <!-- Register -->
+
+        <form
+            id="register-form"
+            class="auth-form hidden"
+            data-auth-form="register"
+        >
+
+            <div class="modal-heading">
+
+                <span class="eyebrow">
+                    Create your station
+                </span>
+
+                <h2>
+                    Register
+                </h2>
+
+            </div>
+
+            <label class="field">
+
+                <span>
+                    Display Name
+                </span>
+
+                <input
+                    id="register-display-name"
+                    type="text"
+                    name="display_name"
+                    minlength="2"
+                    maxlength="40"
+                    autocomplete="nickname"
+                    required
+                >
+
+            </label>
+
+            <label class="field">
+
+                <span>
+                    Email
+                </span>
+
+                <input
+                    id="register-email"
+                    type="email"
+                    name="email"
+                    autocomplete="email"
+                    required
+                >
+
+            </label>
+
+            <label class="field">
+
+                <span>
+                    Password
+                </span>
+
+                <input
+                    id="register-password"
+                    type="password"
+                    name="password"
+                    minlength="8"
+                    autocomplete="new-password"
+                    required
+                >
+
+            </label>
+
+            <button
+                type="submit"
+                class="primary-button full-width"
+            >
+                Create Account
+            </button>
+
+            <p class="form-note">
+                Email verification may be required before
+                certain account features become available.
+            </p>
+
+        </form>
+
+
+        <!-- Password recovery -->
+
+        <form
+            id="recovery-form"
+            class="auth-form hidden"
+            data-auth-form="recovery"
+        >
+
+            <div class="modal-heading">
+
+                <span class="eyebrow">
+                    Account Recovery
+                </span>
+
+                <h2>
+                    Reset your password
+                </h2>
+
+            </div>
+
+            <label class="field">
+
+                <span>
+                    Email
+                </span>
+
+                <input
+                    id="recovery-email"
+                    type="email"
+                    name="email"
+                    autocomplete="email"
+                    required
+                >
+
+            </label>
+
+            <button
+                type="submit"
+                class="primary-button full-width"
+            >
+                Send Recovery Email
+            </button>
+
+            <button
+                id="recovery-back"
+                type="button"
+                class="text-button"
+            >
+                Back to login
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     APP
+     ============================================================= -->
+
+<div
+    id="app"
+    class="app"
+>
+
+    <!-- =========================================================
+         HEADER
+         ========================================================= -->
+
+    <header
+        id="site-header"
+        class="site-header"
+    >
+
+        <div class="header-inner">
+
+            <!-- Brand -->
+
+            <a
+                href="#home"
+                class="site-brand"
+                data-route="home"
+                aria-label="HoKStation.gg Home"
+            >
+
+                <span
+                    class="brand-symbol"
+                    aria-hidden="true"
+                >
+                    HS
+                </span>
+
+                <span class="brand-text">
+
+                    <span class="brand-name">
+                        HoKStation
+                    </span>
+
+                    <span class="brand-domain">
+                        .gg
+                    </span>
+
+                </span>
+
+            </a>
+
+
+            <!-- Desktop Navigation -->
+
+            <nav
+                id="main-navigation"
+                class="main-navigation"
+                aria-label="Main navigation"
+            >
+
+                <a
+                    href="#home"
+                    class="nav-link is-active"
+                    data-route="home"
+                >
+                    Home
+                </a>
+
+                <a
+                    href="#heroes"
+                    class="nav-link"
+                    data-route="heroes"
+                >
+                    Heroes
+                </a>
+
+                <a
+                    href="#builds"
+                    class="nav-link"
+                    data-route="builds"
+                >
+                    Builds
+                </a>
+
+                <a
+                    href="#equipment"
+                    class="nav-link"
+                    data-route="equipment"
+                >
+                    Equipment
+                </a>
+
+                <a
+                    href="#compare"
+                    class="nav-link"
+                    data-route="compare"
+                >
+                    Compare
+                </a>
+
+                <a
+                    href="#patches"
+                    class="nav-link"
+                    data-route="patches"
+                >
+                    Updates
+                </a>
+
+                <a
+                    href="#community"
+                    class="nav-link"
+                    data-route="community"
+                >
+                    Community
+                </a>
+
+            </nav>
+
+
+            <!-- Header Actions -->
+
+            <div class="header-actions">
+
+                <button
+                    id="search-trigger"
+                    class="icon-button"
+                    type="button"
+                    aria-label="Open search"
+                    aria-controls="global-search-panel"
+                    aria-expanded="false"
+                >
+                    <span aria-hidden="true">
+                        ⌕
+                    </span>
+                </button>
+
+
+                <button
+                    id="account-trigger"
+                    class="account-button"
+                    type="button"
+                    aria-label="Open account"
+                    aria-controls="account-panel"
+                    aria-expanded="false"
+                >
+
+                    <span
+                        class="account-avatar"
+                        id="header-account-avatar"
+                    >
+                        ?
+                    </span>
+
+                    <span class="account-label">
+                        Account
+                    </span>
+
+                </button>
+
+
+                <button
+                    id="mobile-menu-trigger"
+                    class="mobile-menu-button"
+                    type="button"
+                    aria-label="Open navigation menu"
+                    aria-controls="mobile-navigation"
+                    aria-expanded="false"
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =========================================================
+         MAIN
+         ========================================================= -->
+
+    <main
+        id="main-content"
+        class="main-content"
+    >
+
+
+        <!-- =====================================================
+             HOME
+             ===================================================== -->
+
+        <section
+            id="home"
+            class="page-section home-section"
+            data-page="home"
+        >
+
+            <!-- Hero / cinematic intro -->
+
+            <div class="home-hero">
+
+                <div class="hero-content">
+
+                    <div class="hero-kicker">
+                        <span class="status-dot"></span>
+                        HONOR OF KINGS COMMUNITY & DATA
+                    </div>
+
+                    <h1>
+                        Your station for
+                        <span class="accent-text">
+                            Honor of Kings.
+                        </span>
+                    </h1>
+
+                    <p class="hero-description">
+                        Explore heroes, equipment, builds, updates,
+                        comparisons and community knowledge in one
+                        premium destination.
+                    </p>
+
+                    <div class="hero-actions">
+
+                        <a
+                            href="#heroes"
+                            class="primary-button"
+                            data-route="heroes"
+                        >
+                            Explore Heroes
+                        </a>
+
+                        <button
+                            id="home-search-button"
+                            type="button"
+                            class="secondary-button"
+                        >
+                            Search the Station
+                        </button>
+
+                    </div>
+
+
+                    <div class="hero-meta">
+
+                        <span>
+                            <strong id="home-hero-count">
+                                —
+                            </strong>
+                            Heroes
+                        </span>
+
+                        <span>
+                            <strong id="home-equipment-count">
+                                —
+                            </strong>
+                            Equipment
+                        </span>
+
+                        <span>
+                            <strong id="home-build-count">
+                                —
+                            </strong>
+                            Builds
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="home-hero-visual">
+
+                    <div class="hero-visual-frame">
+
+                        <div class="visual-grid"></div>
+
+                        <div class="visual-orbit orbit-one"></div>
+                        <div class="visual-orbit orbit-two"></div>
+
+                        <div class="visual-center">
+
+                            <span class="visual-center-mark">
+                                HS
+                            </span>
+
+                            <span class="visual-center-label">
+                                HOKSTATION
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Featured carousel -->
+
+            <div class="section-shell">
+
+                <div class="section-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Featured
+                        </span>
+
+                        <h2>
+                            Inside the Station
+                        </h2>
+
+                    </div>
+
+                    <div class="carousel-controls">
+
+                        <button
+                            id="featured-prev"
+                            class="icon-button"
+                            type="button"
+                            aria-label="Previous featured item"
+                        >
+                            ‹
+                        </button>
+
+                        <button
+                            id="featured-next"
+                            class="icon-button"
+                            type="button"
+                            aria-label="Next featured item"
+                        >
+                            ›
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="featured-carousel"
+                    class="featured-carousel"
+                >
+
+                    <article
+                        class="featured-card is-active"
+                        data-featured-index="0"
+                    >
+
+                        <div class="featured-card-content">
+
+                            <span class="eyebrow">
+                                Hero Spotlight
+                            </span>
+
+                            <h3>
+                                Discover the roster
+                            </h3>
+
+                            <p>
+                                Browse hero information, roles,
+                                abilities, play styles and strategy.
+                            </p>
+
+                            <a
+                                href="#heroes"
+                                class="inline-link"
+                                data-route="heroes"
+                            >
+                                Browse Heroes →
+                            </a>
+
+                        </div>
+
+                        <div class="featured-art-placeholder">
+                            <span>
+                                HERO
+                            </span>
+                        </div>
+
+                    </article>
+
+
+                    <article
+                        class="featured-card"
+                        data-featured-index="1"
+                    >
+
+                        <div class="featured-card-content">
+
+                            <span class="eyebrow">
+                                Build Lab
+                            </span>
+
+                            <h3>
+                                Build your strategy
+                            </h3>
+
+                            <p>
+                                Create and compare equipment setups
+                                and see calculated combat stats.
+                            </p>
+
+                            <a
+                                href="#builds"
+                                class="inline-link"
+                                data-route="builds"
+                            >
+                                Open Build Lab →
+                            </a>
+
+                        </div>
+
+                        <div class="featured-art-placeholder">
+                            <span>
+                                BUILD
+                            </span>
+                        </div>
+
+                    </article>
+
+
+                    <article
+                        class="featured-card"
+                        data-featured-index="2"
+                    >
+
+                        <div class="featured-card-content">
+
+                            <span class="eyebrow">
+                                Updates
+                            </span>
+
+                            <h3>
+                                Stay current
+                            </h3>
+
+                            <p>
+                                Follow patch notes, data changes and
+                                important game updates.
+                            </p>
+
+                            <a
+                                href="#patches"
+                                class="inline-link"
+                                data-route="patches"
+                            >
+                                View Updates →
+                            </a>
+
+                        </div>
+
+                        <div class="featured-art-placeholder">
+                            <span>
+                                UPDATE
+                            </span>
+                        </div>
+
+                    </article>
+
+                </div>
+
+            </div>
+
+
+            <!-- Data freshness -->
+
+            <div class="section-shell">
+
+                <div class="freshness-panel">
+
+                    <div class="freshness-main">
+
+                        <span class="eyebrow">
+                            Data Integrity
+                        </span>
+
+                        <h2>
+                            Station Data Freshness
+                        </h2>
+
+                        <p>
+                            HoKStation tracks when its live data was
+                            last synchronized and when changes were
+                            verified.
+                        </p>
+
+                    </div>
+
+                    <div class="freshness-status">
+
+                        <span
+                            id="data-status-indicator"
+                            class="status-indicator"
+                        ></span>
+
+                        <div>
+
+                            <strong id="data-status-text">
+                                Checking data...
+                            </strong>
+
+                            <span id="data-last-updated">
+                                Last update: —
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <a
+                        href="#data-history"
+                        class="secondary-button"
+                        data-route="data-history"
+                    >
+                        Data History
+                    </a>
+
+                </div>
+
+            </div>
+
+
+            <!-- Quick access -->
+
+            <div class="section-shell">
+
+                <div class="section-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Quick Access
+                        </span>
+
+                        <h2>
+                            Everything in one station
+                        </h2>
+
+                    </div>
+
+                </div>
+
+
+                <div class="quick-grid">
+
+                    <a
+                        href="#heroes"
+                        class="quick-card"
+                        data-route="heroes"
+                    >
+
+                        <span class="quick-number">
+                            01
+                        </span>
+
+                        <strong>
+                            Heroes
+                        </strong>
+
+                        <span>
+                            Roles, abilities, strategies and stats.
+                        </span>
+
+                    </a>
+
+
+                    <a
+                        href="#equipment"
+                        class="quick-card"
+                        data-route="equipment"
+                    >
+
+                        <span class="quick-number">
+                            02
+                        </span>
+
+                        <strong>
+                            Equipment
+                        </strong>
+
+                        <span>
+                            Items, attributes and recommendations.
+                        </span>
+
+                    </a>
+
+
+                    <a
+                        href="#builds"
+                        class="quick-card"
+                        data-route="builds"
+                    >
+
+                        <span class="quick-number">
+                            03
+                        </span>
+
+                        <strong>
+                            Builds
+                        </strong>
+
+                        <span>
+                            Create, save and share builds.
+                        </span>
+
+                    </a>
+
+
+                    <a
+                        href="#compare"
+                        class="quick-card"
+                        data-route="compare"
+                    >
+
+                        <span class="quick-number">
+                            04
+                        </span>
+
+                        <strong>
+                            Compare
+                        </strong>
+
+                        <span>
+                            Compare heroes, equipment and builds.
+                        </span>
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             HEROES
+             ===================================================== -->
+
+        <section
+            id="heroes"
+            class="page-section"
+            data-page="heroes"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Database
+                        </span>
+
+                        <h1>
+                            Heroes
+                        </h1>
+
+                        <p>
+                            Explore the Honor of Kings hero roster,
+                            roles, abilities and strategic information.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="heroes-search-button"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        Search Heroes
+                    </button>
+
+                </div>
+
+
+                <div class="toolbar">
+
+                    <div class="toolbar-group">
+
+                        <button
+                            class="filter-chip is-active"
+                            type="button"
+                            data-hero-role="all"
+                        >
+                            All
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-hero-role="clash"
+                        >
+                            Clash Lane
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-hero-role="jungle"
+                        >
+                            Jungle
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-hero-role="mid"
+                        >
+                            Mid Lane
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-hero-role="farm"
+                        >
+                            Farm Lane
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-hero-role="support"
+                        >
+                            Support
+                        </button>
+
+                    </div>
+
+                    <label class="select-field">
+
+                        <span class="sr-only">
+                            Sort heroes
+                        </span>
+
+                        <select id="hero-sort">
+
+                            <option value="name">
+                                Name
+                            </option>
+
+                            <option value="role">
+                                Role
+                            </option>
+
+                            <option value="recent">
+                                Recently Updated
+                            </option>
+
+                        </select>
+
+                    </label>
+
+                </div>
+
+
+                <div
+                    id="hero-grid"
+                    class="card-grid hero-grid"
+                >
+                    <!-- Rendered by data.js / features.js -->
+                </div>
+
+
+                <div
+                    id="hero-empty"
+                    class="empty-state hidden"
+                >
+
+                    <span class="empty-icon">
+                        ◇
+                    </span>
+
+                    <h3>
+                        No heroes found
+                    </h3>
+
+                    <p>
+                        Try another search or filter.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             HERO DETAIL
+             ===================================================== -->
+
+        <section
+            id="hero-detail"
+            class="page-section detail-section"
+            data-page="hero-detail"
+        >
+
+            <div
+                id="hero-detail-content"
+                class="section-shell"
+            >
+                <!-- Dynamic hero detail -->
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             EQUIPMENT
+             ===================================================== -->
+
+        <section
+            id="equipment"
+            class="page-section"
+            data-page="equipment"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Database
+                        </span>
+
+                        <h1>
+                            Equipment
+                        </h1>
+
+                        <p>
+                            Explore item attributes, costs,
+                            categories and build recommendations.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="toolbar">
+
+                    <div class="toolbar-group">
+
+                        <button
+                            class="filter-chip is-active"
+                            type="button"
+                            data-equipment-type="all"
+                        >
+                            All
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-equipment-type="attack"
+                        >
+                            Attack
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-equipment-type="magic"
+                        >
+                            Magic
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-equipment-type="defense"
+                        >
+                            Defense
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-equipment-type="movement"
+                        >
+                            Movement
+                        </button>
+
+                        <button
+                            class="filter-chip"
+                            type="button"
+                            data-equipment-type="roaming"
+                        >
+                            Roaming
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="equipment-grid"
+                    class="card-grid equipment-grid"
+                >
+                    <!-- Rendered dynamically -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             BUILDS
+             ===================================================== -->
+
+        <section
+            id="builds"
+            class="page-section"
+            data-page="builds"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Build Lab
+                        </span>
+
+                        <h1>
+                            Builds
+                        </h1>
+
+                        <p>
+                            Explore recommended builds or create
+                            your own equipment setup.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="create-build-button"
+                        class="primary-button"
+                        type="button"
+                    >
+                        Create Build
+                    </button>
+
+                </div>
+
+
+                <div class="build-feature-panel">
+
+                    <div class="build-feature-copy">
+
+                        <span class="eyebrow">
+                            Build Calculator
+                        </span>
+
+                        <h2>
+                            Build around the stats that matter.
+                        </h2>
+
+                        <p>
+                            Select equipment slots and instantly
+                            calculate the resulting physical attack,
+                            HP, armor and magic defense.
+                        </p>
+
+                        <button
+                            id="open-build-lab"
+                            class="secondary-button"
+                            type="button"
+                        >
+                            Open Build Lab
+                        </button>
+
+                    </div>
+
+                    <div class="build-stat-preview">
+
+                        <div class="stat-preview-item">
+
+                            <span>
+                                Physical Attack
+                            </span>
+
+                            <strong id="preview-physical-attack">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="stat-preview-item">
+
+                            <span>
+                                HP
+                            </span>
+
+                            <strong id="preview-hp">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="stat-preview-item">
+
+                            <span>
+                                Armor
+                            </span>
+
+                            <strong id="preview-armor">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="stat-preview-item">
+
+                            <span>
+                                Magic Defense
+                            </span>
+
+                            <strong id="preview-magic-defense">
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="section-heading compact-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Community Builds
+                        </span>
+
+                        <h2>
+                            Recent builds
+                        </h2>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="build-grid"
+                    class="card-grid build-grid"
+                >
+                    <!-- Rendered dynamically -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             BUILD DETAIL / BUILDER
+             ===================================================== -->
+
+        <section
+            id="build-lab"
+            class="page-section"
+            data-page="build-lab"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Build Lab
+                        </span>
+
+                        <h1>
+                            Build Creator
+                        </h1>
+
+                        <p>
+                            Select a hero and equipment to calculate
+                            the resulting build statistics.
+                        </p>
+
+                    </div>
+
+                    <div class="build-actions">
+
+                        <button
+                            id="save-build-button"
+                            class="primary-button"
+                            type="button"
+                        >
+                            Save Build
+                        </button>
+
+                        <button
+                            id="share-build-button"
+                            class="secondary-button"
+                            type="button"
+                        >
+                            Share
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div class="build-builder-layout">
+
+                    <!-- Left -->
+
+                    <div class="build-builder-main">
+
+                        <div class="panel">
+
+                            <div class="panel-heading">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Hero
+                                    </span>
+
+                                    <h2>
+                                        Choose a hero
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                            <div
+                                id="build-hero-selector"
+                                class="selector-grid"
+                            >
+                                <!-- Dynamic -->
+                            </div>
+
+                        </div>
+
+
+                        <div class="panel">
+
+                            <div class="panel-heading">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Equipment
+                                    </span>
+
+                                    <h2>
+                                        Equipment Slots
+                                    </h2>
+
+                                </div>
+
+                                <button
+                                    id="clear-build-button"
+                                    class="text-button"
+                                    type="button"
+                                >
+                                    Clear
+                                </button>
+
+                            </div>
+
+
+                            <div
+                                id="build-slots"
+                                class="build-slots"
+                            >
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="1"
+                                >
+
+                                    <span class="slot-number">
+                                        01
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="1"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="2"
+                                >
+
+                                    <span class="slot-number">
+                                        02
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="2"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="3"
+                                >
+
+                                    <span class="slot-number">
+                                        03
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="3"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="4"
+                                >
+
+                                    <span class="slot-number">
+                                        04
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="4"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="5"
+                                >
+
+                                    <span class="slot-number">
+                                        05
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="5"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+
+                                <div
+                                    class="build-slot"
+                                    data-build-slot="6"
+                                >
+
+                                    <span class="slot-number">
+                                        06
+                                    </span>
+
+                                    <div class="slot-content">
+                                        <strong>
+                                            Empty
+                                        </strong>
+                                        <span>
+                                            Select equipment
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        class="slot-select-button"
+                                        type="button"
+                                        data-slot-action="6"
+                                    >
+                                        Select
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Right -->
+
+                    <aside class="build-builder-sidebar">
+
+                        <div class="panel build-summary">
+
+                            <div class="panel-heading">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Calculated Stats
+                                    </span>
+
+                                    <h2>
+                                        Build Summary
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                id="build-stat-list"
+                                class="build-stat-list"
+                            >
+
+                                <div class="build-stat-row">
+                                    <span>HP</span>
+                                    <strong id="build-stat-hp">—</strong>
+                                </div>
+
+                                <div class="build-stat-row">
+                                    <span>Physical Attack</span>
+                                    <strong id="build-stat-physical-attack">—</strong>
+                                </div>
+
+                                <div class="build-stat-row">
+                                    <span>Magic Attack</span>
+                                    <strong id="build-stat-magic-attack">—</strong>
+                                </div>
+
+                                <div class="build-stat-row">
+                                    <span>Armor</span>
+                                    <strong id="build-stat-armor">—</strong>
+                                </div>
+
+                                <div class="build-stat-row">
+                                    <span>Magic Defense</span>
+                                    <strong id="build-stat-magic-defense">—</strong>
+                                </div>
+
+                                <div class="build-stat-row">
+                                    <span>Movement Speed</span>
+                                    <strong id="build-stat-movement-speed">—</strong>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="panel">
+
+                            <div class="panel-heading">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Build Information
+                                    </span>
+
+                                    <h2>
+                                        Details
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+
+                            <label class="field">
+
+                                <span>
+                                    Build Name
+                                </span>
+
+                                <input
+                                    id="build-name"
+                                    type="text"
+                                    maxlength="80"
+                                    placeholder="My HoK Build"
+                                >
+
+                            </label>
+
+
+                            <label class="field">
+
+                                <span>
+                                    Description
+                                </span>
+
+                                <textarea
+                                    id="build-description"
+                                    rows="4"
+                                    maxlength="500"
+                                    placeholder="Explain the purpose of this build..."
+                                ></textarea>
+
+                            </label>
+
+                        </div>
+
+                    </aside>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             COMPARE
+             ===================================================== -->
+
+        <section
+            id="compare"
+            class="page-section"
+            data-page="compare"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Analysis
+                        </span>
+
+                        <h1>
+                            Compare
+                        </h1>
+
+                        <p>
+                            Compare heroes, equipment and builds
+                            side-by-side.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="compare-controls">
+
+                    <div class="compare-selector">
+
+                        <span class="eyebrow">
+                            Slot A
+                        </span>
+
+                        <select id="compare-item-a">
+                            <option value="">
+                                Select item
+                            </option>
+                        </select>
+
+                    </div>
+
+
+                    <div class="compare-vs">
+                        VS
+                    </div>
+
+
+                    <div class="compare-selector">
+
+                        <span class="eyebrow">
+                            Slot B
+                        </span>
+
+                        <select id="compare-item-b">
+                            <option value="">
+                                Select item
+                            </option>
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="compare-results"
+                    class="compare-results"
+                >
+
+                    <div class="empty-state">
+
+                        <span class="empty-icon">
+                            ⇄
+                        </span>
+
+                        <h3>
+                            Choose two items
+                        </h3>
+
+                        <p>
+                            Select two heroes, equipment pieces or
+                            supported items to begin comparing.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             PATCHES / UPDATES
+             ===================================================== -->
+
+        <section
+            id="patches"
+            class="page-section"
+            data-page="patches"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Official Source Tracking
+                        </span>
+
+                        <h1>
+                            Updates
+                        </h1>
+
+                        <p>
+                            Patch notes, hero changes, equipment
+                            changes and data history.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="update-layout">
+
+                    <div class="update-main">
+
+                        <div class="section-heading compact-heading">
+
+                            <div>
+
+                                <span class="eyebrow">
+                                    Patch History
+                                </span>
+
+                                <h2>
+                                    Recent Updates
+                                </h2>
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            id="patch-list"
+                            class="patch-list"
+                        >
+                            <!-- Dynamic -->
+                        </div>
+
+                    </div>
+
+
+                    <aside class="update-sidebar">
+
+                        <div class="panel">
+
+                            <span class="eyebrow">
+                                Data Freshness
+                            </span>
+
+                            <h3>
+                                Current Dataset
+                            </h3>
+
+                            <div class="data-freshness-card">
+
+                                <span
+                                    id="patch-data-status"
+                                    class="status-indicator"
+                                ></span>
+
+                                <strong id="patch-data-status-text">
+                                    Checking...
+                                </strong>
+
+                                <span id="patch-data-date">
+                                    —
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="panel">
+
+                            <span class="eyebrow">
+                                History
+                            </span>
+
+                            <h3>
+                                Change Tracking
+                            </h3>
+
+                            <p>
+                                Live data, patch history and change
+                                logs are kept separately.
+                            </p>
+
+                            <a
+                                href="#data-history"
+                                class="secondary-button full-width"
+                                data-route="data-history"
+                            >
+                                View Change History
+                            </a>
+
+                        </div>
+
+                    </aside>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             DATA HISTORY
+             ===================================================== -->
+
+        <section
+            id="data-history"
+            class="page-section"
+            data-page="data-history"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Transparency
+                        </span>
+
+                        <h1>
+                            Data History
+                        </h1>
+
+                        <p>
+                            Track synchronization events,
+                            verification and documented changes.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="history-tabs">
+
+                    <button
+                        class="filter-chip is-active"
+                        type="button"
+                        data-history-tab="changes"
+                    >
+                        Change Log
+                    </button>
+
+                    <button
+                        class="filter-chip"
+                        type="button"
+                        data-history-tab="patches"
+                    >
+                        Patch History
+                    </button>
+
+                    <button
+                        class="filter-chip"
+                        type="button"
+                        data-history-tab="snapshots"
+                    >
+                        Raw Snapshots
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="data-history-list"
+                    class="history-list"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             META TRACKER
+             ===================================================== -->
+
+        <section
+            id="meta"
+            class="page-section"
+            data-page="meta"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Community Analysis
+                        </span>
+
+                        <h1>
+                            Meta Tracker
+                        </h1>
+
+                        <p>
+                            Explore tracked hero and role trends
+                            without presenting community estimates
+                            as official game data.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="meta-grid"
+                    class="meta-grid"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             FAVORITES
+             ===================================================== -->
+
+        <section
+            id="favorites"
+            class="page-section"
+            data-page="favorites"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Your Station
+                        </span>
+
+                        <h1>
+                            Favorites
+                        </h1>
+
+                        <p>
+                            Heroes and builds you choose to follow.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="favorites-tabs">
+
+                    <button
+                        class="filter-chip is-active"
+                        type="button"
+                        data-favorite-tab="heroes"
+                    >
+                        Heroes
+                    </button>
+
+                    <button
+                        class="filter-chip"
+                        type="button"
+                        data-favorite-tab="builds"
+                    >
+                        Builds
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="favorites-content"
+                    class="card-grid"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             COMMUNITY
+             ===================================================== -->
+
+        <section
+            id="community"
+            class="page-section"
+            data-page="community"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Community
+                        </span>
+
+                        <h1>
+                            Community Station
+                        </h1>
+
+                        <p>
+                            Questions, discussions, reports and
+                            shared knowledge from HoKStation users.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="ask-question-button"
+                        class="primary-button"
+                        type="button"
+                    >
+                        Ask a Question
+                    </button>
+
+                </div>
+
+
+                <div class="community-layout">
+
+                    <div class="community-main">
+
+                        <div class="community-tabs">
+
+                            <button
+                                class="filter-chip is-active"
+                                type="button"
+                                data-community-filter="recent"
+                            >
+                                Recent
+                            </button>
+
+                            <button
+                                class="filter-chip"
+                                type="button"
+                                data-community-filter="popular"
+                            >
+                                Popular
+                            </button>
+
+                            <button
+                                class="filter-chip"
+                                type="button"
+                                data-community-filter="unanswered"
+                            >
+                                Unanswered
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="question-list"
+                            class="question-list"
+                        >
+                            <!-- Dynamic -->
+                        </div>
+
+                    </div>
+
+
+                    <aside class="community-sidebar">
+
+                        <div class="panel">
+
+                            <span class="eyebrow">
+                                Community Rules
+                            </span>
+
+                            <h3>
+                                Keep the Station useful.
+                            </h3>
+
+                            <ul class="simple-list">
+
+                                <li>
+                                    Keep questions relevant to HoK.
+                                </li>
+
+                                <li>
+                                    Respect other players.
+                                </li>
+
+                                <li>
+                                    Avoid misleading data claims.
+                                </li>
+
+                                <li>
+                                    Report problematic content.
+                                </li>
+
+                            </ul>
+
+                        </div>
+
+
+                        <div class="panel">
+
+                            <span class="eyebrow">
+                                Need Help?
+                            </span>
+
+                            <h3>
+                                Report an issue
+                            </h3>
+
+                            <p>
+                                Found incorrect data, broken content
+                                or inappropriate community content?
+                            </p>
+
+                            <button
+                                id="report-button"
+                                class="secondary-button full-width"
+                                type="button"
+                            >
+                                Submit Report
+                            </button>
+
+                        </div>
+
+                    </aside>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             Q&A DETAIL
+             ===================================================== -->
+
+        <section
+            id="question-detail"
+            class="page-section"
+            data-page="question-detail"
+        >
+
+            <div
+                id="question-detail-content"
+                class="section-shell"
+            >
+                <!-- Dynamic -->
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             ACCOUNT PROFILE
+             ===================================================== -->
+
+        <section
+            id="profile"
+            class="page-section"
+            data-page="profile"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Account
+                        </span>
+
+                        <h1>
+                            Profile
+                        </h1>
+
+                        <p>
+                            Manage your HoKStation profile and
+                            community presence.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="profile-layout">
+
+                    <div class="panel profile-card">
+
+                        <div class="large-profile-avatar">
+                            ?
+                        </div>
+
+                        <h2 id="profile-name">
+                            User
+                        </h2>
+
+                        <p id="profile-email">
+                            —
+                        </p>
+
+                        <span
+                            id="profile-role"
+                            class="role-badge"
+                        >
+                            User
+                        </span>
+
+                    </div>
+
+
+                    <div class="panel">
+
+                        <div class="panel-heading">
+
+                            <div>
+
+                                <span class="eyebrow">
+                                    Profile Information
+                                </span>
+
+                                <h2>
+                                    Details
+                                </h2>
+
+                            </div>
+
+                        </div>
+
+
+                        <form id="profile-form">
+
+                            <label class="field">
+
+                                <span>
+                                    Display Name
+                                </span>
+
+                                <input
+                                    id="profile-display-name"
+                                    type="text"
+                                    maxlength="40"
+                                >
+
+                            </label>
+
+
+                            <label class="field">
+
+                                <span>
+                                    Bio
+                                </span>
+
+                                <textarea
+                                    id="profile-bio"
+                                    rows="5"
+                                    maxlength="300"
+                                ></textarea>
+
+                            </label>
+
+
+                            <button
+                                type="submit"
+                                class="primary-button"
+                            >
+                                Save Profile
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             SAVED BUILDS
+             ===================================================== -->
+
+        <section
+            id="saved-builds"
+            class="page-section"
+            data-page="saved-builds"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Account
+                        </span>
+
+                        <h1>
+                            Saved Builds
+                        </h1>
+
+                        <p>
+                            Your saved build configurations.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="saved-builds-grid"
+                    class="card-grid"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             ACTIVITY
+             ===================================================== -->
+
+        <section
+            id="activity"
+            class="page-section"
+            data-page="activity"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Account
+                        </span>
+
+                        <h1>
+                            Activity
+                        </h1>
+
+                        <p>
+                            Your recent HoKStation activity.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="activity-list"
+                    class="activity-list"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             ACCOUNT SETTINGS
+             ===================================================== -->
+
+        <section
+            id="settings"
+            class="page-section"
+            data-page="settings"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Account
+                        </span>
+
+                        <h1>
+                            Settings
+                        </h1>
+
+                        <p>
+                            Manage your account preferences.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="settings-grid">
+
+                    <div class="panel">
+
+                        <span class="eyebrow">
+                            Appearance
+                        </span>
+
+                        <h2>
+                            Interface
+                        </h2>
+
+
+                        <label class="field">
+
+                            <span>
+                                Language
+                            </span>
+
+                            <select id="language-setting">
+
+                                <option value="en">
+                                    English
+                                </option>
+
+                                <option value="vi">
+                                    Tiếng Việt
+                                </option>
+
+                                <option value="zh">
+                                    中文
+                                </option>
+
+                                <option value="fr">
+                                    Français
+                                </option>
+
+                                <option value="ms">
+                                    Bahasa Melayu
+                                </option>
+
+                                <option value="id">
+                                    Bahasa Indonesia
+                                </option>
+
+                                <option value="fil">
+                                    Filipino
+                                </option>
+
+                                <option value="ja">
+                                    日本語
+                                </option>
+
+                                <option value="es">
+                                    Español
+                                </option>
+
+                            </select>
+
+                        </label>
+
+
+                        <label class="toggle-row">
+
+                            <span>
+
+                                <strong>
+                                    Reduced Motion
+                                </strong>
+
+                                <small>
+                                    Reduce non-essential animations.
+                                </small>
+
+                            </span>
+
+                            <input
+                                id="reduced-motion-setting"
+                                type="checkbox"
+                            >
+
+                        </label>
+
+                    </div>
+
+
+                    <div class="panel">
+
+                        <span class="eyebrow">
+                            Security
+                        </span>
+
+                        <h2>
+                            Account Security
+                        </h2>
+
+                        <button
+                            id="change-password-button"
+                            class="secondary-button full-width"
+                            type="button"
+                        >
+                            Change Password
+                        </button>
+
+                        <button
+                            id="send-verification-button"
+                            class="secondary-button full-width"
+                            type="button"
+                        >
+                            Resend Verification Email
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             ADMIN DASHBOARD
+             ===================================================== -->
+
+        <section
+            id="admin"
+            class="page-section admin-section"
+            data-page="admin"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow admin-eyebrow">
+                            Restricted Area
+                        </span>
+
+                        <h1>
+                            Admin Dashboard
+                        </h1>
+
+                        <p>
+                            Manage data synchronization, verification,
+                            users, content, advertisements and settings.
+                        </p>
+
+                    </div>
+
+                    <span
+                        id="admin-access-status"
+                        class="role-badge"
+                    >
+                        Restricted
+                    </span>
+
+                </div>
+
+
+                <div class="admin-grid">
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="sync"
+                    >
+
+                        <span class="admin-number">
+                            01
+                        </span>
+
+                        <strong>
+                            Data Sync
+                        </strong>
+
+                        <span>
+                            Synchronize and verify platform data.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="content"
+                    >
+
+                        <span class="admin-number">
+                            02
+                        </span>
+
+                        <strong>
+                            Content
+                        </strong>
+
+                        <span>
+                            Manage heroes, equipment, builds and pages.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="users"
+                    >
+
+                        <span class="admin-number">
+                            03
+                        </span>
+
+                        <strong>
+                            Users
+                        </strong>
+
+                        <span>
+                            Manage accounts and permissions.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="ads"
+                    >
+
+                        <span class="admin-number">
+                            04
+                        </span>
+
+                        <strong>
+                            Advertisements
+                        </strong>
+
+                        <span>
+                            Manage approved advertising placements.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="token-shops"
+                    >
+
+                        <span class="admin-number">
+                            05
+                        </span>
+
+                        <strong>
+                            Token Shops
+                        </strong>
+
+                        <span>
+                            Manage approved official shop links.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="logs"
+                    >
+
+                        <span class="admin-number">
+                            06
+                        </span>
+
+                        <strong>
+                            Logs
+                        </strong>
+
+                        <span>
+                            Review administrative and system logs.
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="admin-card"
+                        type="button"
+                        data-admin-panel="settings"
+                    >
+
+                        <span class="admin-number">
+                            07
+                        </span>
+
+                        <strong>
+                            Platform Settings
+                        </strong>
+
+                        <span>
+                            Configure station-wide settings.
+                        </span>
+
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="admin-panel-container"
+                    class="admin-panel-container"
+                >
+                    <!-- Dynamic admin panel -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             NOTICES
+             ===================================================== -->
+
+        <section
+            id="notices"
+            class="page-section"
+            data-page="notices"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Station Notices
+                        </span>
+
+                        <h1>
+                            Notices
+                        </h1>
+
+                        <p>
+                            New heroes, skins, important updates and
+                            platform announcements.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="notice-list"
+                    class="notice-list"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             SEARCH RESULT PAGE
+             ===================================================== -->
+
+        <section
+            id="search-results-page"
+            class="page-section"
+            data-page="search-results"
+        >
+
+            <div class="section-shell">
+
+                <div class="page-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Search
+                        </span>
+
+                        <h1>
+                            Search Results
+                        </h1>
+
+                        <p id="search-results-summary">
+                            —
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="search-results-page-content"
+                    class="search-results-page-content"
+                >
+                    <!-- Dynamic -->
+                </div>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+    <!-- =========================================================
+         FOOTER
+         ========================================================= -->
+
+    <footer
+        id="site-footer"
+        class="site-footer"
+    >
+
+        <div class="footer-main">
+
+            <div class="footer-brand">
+
+                <a
+                    href="#home"
+                    class="site-brand"
+                    data-route="home"
+                >
+
+                    <span class="brand-symbol">
+                        HS
+                    </span>
+
+                    <span class="brand-text">
+
+                        <span class="brand-name">
+                            HoKStation
+                        </span>
+
+                        <span class="brand-domain">
+                            .gg
+                        </span>
+
+                    </span>
+
+                </a>
+
+                <p>
+                    A premium independent Honor of Kings
+                    community and data platform.
+                </p>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h3>
+                    Explore
+                </h3>
+
+                <a
+                    href="#heroes"
+                    data-route="heroes"
+                >
+                    Heroes
+                </a>
+
+                <a
+                    href="#equipment"
+                    data-route="equipment"
+                >
+                    Equipment
+                </a>
+
+                <a
+                    href="#builds"
+                    data-route="builds"
+                >
+                    Builds
+                </a>
+
+                <a
+                    href="#compare"
+                    data-route="compare"
+                >
+                    Compare
+                </a>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h3>
+                    Community
+                </h3>
+
+                <a
+                    href="#community"
+                    data-route="community"
+                >
+                    Q&A
+                </a>
+
+                <a
+                    href="#meta"
+                    data-route="meta"
+                >
+                    Meta Tracker
+                </a>
+
+                <a
+                    href="#notices"
+                    data-route="notices"
+                >
+                    Notices
+                </a>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h3>
+                    Information
+                </h3>
+
+                <a
+                    href="#patches"
+                    data-route="patches"
+                >
+                    Patch History
+                </a>
+
+                <a
+                    href="#data-history"
+                    data-route="data-history"
+                >
+                    Data History
+                </a>
+
+                <button
+                    id="footer-report-button"
+                    type="button"
+                >
+                    Report an Issue
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="footer-bottom">
+
+            <div>
+
+                <strong>
+                    HoKStation.gg
+                </strong>
+
+                <span>
+                    Independent community project.
+                </span>
+
+            </div>
+
+
+            <div class="footer-legal">
+
+                <span>
+                    Honor of Kings and related trademarks belong
+                    to their respective owners.
+                </span>
+
+                <span>
+                    HoKStation.gg is not affiliated with or endorsed
+                    by Tencent or Honor of Kings.
+                </span>
+
+            </div>
+
+
+            <div class="footer-status">
+
+                <span
+                    id="footer-status-dot"
+                    class="status-dot"
+                ></span>
+
+                <span id="footer-status-text">
+                    Station Online
+                </span>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+</div>
+
+
+<!-- =============================================================
+     GLOBAL DIALOGS / DYNAMIC ROOTS
+     ============================================================= -->
+
+<div
+    id="equipment-selector-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card equipment-selector-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="equipment-selector-title"
+    >
+
+        <button
+            id="equipment-selector-close"
+            class="modal-close"
+            type="button"
+            aria-label="Close"
+        >
+            ×
+        </button>
+
+        <div class="modal-heading">
+
+            <span class="eyebrow">
+                Build Lab
+            </span>
+
+            <h2 id="equipment-selector-title">
+                Select Equipment
+            </h2>
+
+        </div>
+
+
+        <input
+            id="equipment-selector-search"
+            class="search-input standalone"
+            type="search"
+            placeholder="Search equipment..."
+        >
+
+
+        <div
+            id="equipment-selector-list"
+            class="equipment-selector-list"
+        >
+            <!-- Dynamic -->
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     QUESTION MODAL
+     ============================================================= -->
+
+<div
+    id="question-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="question-modal-title"
+    >
+
+        <button
+            id="question-modal-close"
+            class="modal-close"
+            type="button"
+            aria-label="Close"
+        >
+            ×
+        </button>
+
+        <div class="modal-heading">
+
+            <span class="eyebrow">
+                Community
+            </span>
+
+            <h2 id="question-modal-title">
+                Ask a Question
+            </h2>
+
+        </div>
+
+
+        <form id="question-form">
+
+            <label class="field">
+
+                <span>
+                    Title
+                </span>
+
+                <input
+                    id="question-title"
+                    type="text"
+                    maxlength="120"
+                    required
+                >
+
+            </label>
+
+
+            <label class="field">
+
+                <span>
+                    Question
+                </span>
+
+                <textarea
+                    id="question-body"
+                    rows="8"
+                    maxlength="5000"
+                    required
+                ></textarea>
+
+            </label>
+
+
+            <label class="field">
+
+                <span>
+                    Category
+                </span>
+
+                <select id="question-category">
+
+                    <option value="general">
+                        General
+                    </option>
+
+                    <option value="heroes">
+                        Heroes
+                    </option>
+
+                    <option value="builds">
+                        Builds
+                    </option>
+
+                    <option value="equipment">
+                        Equipment
+                    </option>
+
+                    <option value="strategy">
+                        Strategy
+                    </option>
+
+                    <option value="technical">
+                        Technical
+                    </option>
+
+                </select>
+
+            </label>
+
+
+            <button
+                type="submit"
+                class="primary-button full-width"
+            >
+                Post Question
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     REPORT MODAL
+     ============================================================= -->
+
+<div
+    id="report-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-modal-title"
+    >
+
+        <button
+            id="report-modal-close"
+            class="modal-close"
+            type="button"
+            aria-label="Close"
+        >
+            ×
+        </button>
+
+        <div class="modal-heading">
+
+            <span class="eyebrow">
+                Community Safety
+            </span>
+
+            <h2 id="report-modal-title">
+                Submit a Report
+            </h2>
+
+        </div>
+
+
+        <form id="report-form">
+
+            <label class="field">
+
+                <span>
+                    Report Type
+                </span>
+
+                <select id="report-type">
+
+                    <option value="incorrect-data">
+                        Incorrect Data
+                    </option>
+
+                    <option value="broken-content">
+                        Broken Content
+                    </option>
+
+                    <option value="inappropriate-content">
+                        Inappropriate Content
+                    </option>
+
+                    <option value="spam">
+                        Spam
+                    </option>
+
+                    <option value="other">
+                        Other
+                    </option>
+
+                </select>
+
+            </label>
+
+
+            <label class="field">
+
+                <span>
+                    Details
+                </span>
+
+                <textarea
+                    id="report-details"
+                    rows="7"
+                    maxlength="3000"
+                    required
+                ></textarea>
+
+            </label>
+
+
+            <button
+                type="submit"
+                class="primary-button full-width"
+            >
+                Submit Report
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     BUILD SHARE MODAL
+     ============================================================= -->
+
+<div
+    id="share-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-modal-title"
+    >
+
+        <button
+            id="share-modal-close"
+            class="modal-close"
+            type="button"
+            aria-label="Close"
+        >
+            ×
+        </button>
+
+        <div class="modal-heading">
+
+            <span class="eyebrow">
+                Share
+            </span>
+
+            <h2 id="share-modal-title">
+                Share this build
+            </h2>
+
+        </div>
+
+
+        <label class="field">
+
+            <span>
+                Shareable URL
+            </span>
+
+            <div class="copy-field">
+
+                <input
+                    id="share-url"
+                    type="text"
+                    readonly
+                >
+
+                <button
+                    id="copy-share-url"
+                    type="button"
+                    class="secondary-button"
+                >
+                    Copy
+                </button>
+
+            </div>
+
+        </label>
+
+
+        <div class="share-actions">
+
+            <button
+                id="native-share-button"
+                type="button"
+                class="primary-button full-width"
+            >
+                Share
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     GENERIC CONFIRM MODAL
+     ============================================================= -->
+
+<div
+    id="confirm-modal"
+    class="modal-overlay"
+    aria-hidden="true"
+>
+
+    <div
+        class="modal-card confirm-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+    >
+
+        <div class="modal-heading">
+
+            <span class="eyebrow">
+                Confirmation
+            </span>
+
+            <h2 id="confirm-modal-title">
+                Are you sure?
+            </h2>
+
+            <p id="confirm-modal-message">
+                Please confirm this action.
+            </p>
+
+        </div>
+
+
+        <div class="confirm-actions">
+
+            <button
+                id="confirm-cancel"
+                type="button"
+                class="secondary-button"
+            >
+                Cancel
+            </button>
+
+            <button
+                id="confirm-accept"
+                type="button"
+                class="primary-button"
+            >
+                Confirm
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     ERROR / OFFLINE FALLBACK
+     ============================================================= -->
+
+<div
+    id="global-error"
+    class="global-error hidden"
+    role="alert"
+>
+
+    <div class="global-error-inner">
+
+        <span class="error-icon">
+            !
+        </span>
+
+        <div>
+
+            <strong>
+                Station connection issue
+            </strong>
+
+            <p id="global-error-message">
+                Some live features may be unavailable.
+            </p>
+
+        </div>
+
+        <button
+            id="global-error-close"
+            class="icon-button"
+            type="button"
+            aria-label="Close error"
+        >
+            ×
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     JAVASCRIPT ARCHITECTURE
+     -------------------------------------------------------------
+     IMPORTANT:
+     These files are intentionally connected here from the start.
+
+     Dependency order:
+
+     1. config.js
+        ↓
+     2. data.js
+        ↓
+     3. app.js
+        ↓
+     4. features.js
+        ↓
+     5. account.js
+
+     All future files MUST follow the HTML IDs/classes above.
+     ============================================================= -->
+
+<script
+    src="config.js"
+    defer
+></script>
+
+<script
+    src="data.js"
+    defer
+></script>
+
+<script
+    src="app.js"
+    defer
+></script>
+
+<script
+    src="features.js"
+    defer
+></script>
+
+<script
+    src="account.js"
+    defer
+></script>
+
+
+<!-- =============================================================
+     END HOKSTATION.GG
+     ============================================================= -->
+
+</body>
+              </html>
