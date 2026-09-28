@@ -10,92 +10,72 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 }
 
-const headers = {
-  apikey: SUPABASE_SERVICE_ROLE_KEY,
-  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-  "Content-Type": "application/json",
-};
+const OFFICIAL_HERO_LIST =
+  "https://world.honorofkings.com/ipworld/en/m/champion.html";
 
-async function supabase(path, options = {}) {
+async function testOfficialSource() {
+  console.log("HoKStation Official Data Sync Engine");
+  console.log("Testing official HoK hero source...");
+  console.log(OFFICIAL_HERO_LIST);
+
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
+    OFFICIAL_HERO_LIST,
     {
-      ...options,
       headers: {
-        ...headers,
-        ...(options.headers || {}),
+        "User-Agent":
+          "HoKStation-Official-Sync/1.0",
+        "Accept":
+          "text/html,application/xhtml+xml",
       },
     }
   );
 
-  const text = await response.text();
+  console.log(
+    `Official source HTTP status: ${response.status}`
+  );
 
   if (!response.ok) {
     throw new Error(
-      `Supabase ${response.status}: ${text}`
+      `Official source returned HTTP ${response.status}`
     );
   }
 
-  return text ? JSON.parse(text) : null;
-}
-
-async function main() {
-  console.log(
-    "HoKStation Official Data Sync Engine"
-  );
+  const html = await response.text();
 
   console.log(
-    "Supabase connection settings detected."
+    `Official source downloaded: ${html.length} characters`
   );
 
-  const jobs = await supabase(
-    "sync_jobs",
-    {
-      method: "POST",
-      headers: {
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify({
-        job_type: "official_data_sync",
-        status: "RUNNING",
-        started_at: new Date().toISOString(),
-      }),
-    }
-  );
-
-  const job = jobs?.[0];
-
-  if (!job?.id) {
+  if (html.length < 10000) {
     throw new Error(
-      "Could not create sync_jobs record."
+      "Official hero page response is unexpectedly small."
+    );
+  }
+
+  const heroLinks = [
+    ...html.matchAll(
+      /href\s*=\s*["']([^"']*\/zlkdatasys\/ip\/hero\/[^"']+)["']/gi
+    ),
+  ];
+
+  console.log(
+    `Hero links detected: ${heroLinks.length}`
+  );
+
+  if (heroLinks.length === 0) {
+    throw new Error(
+      "No official hero links detected."
     );
   }
 
   console.log(
-    `Sync job created: ${job.id}`
+    "Official Hero Source Test: PASS"
   );
-
-  await supabase(
-    `sync_jobs?id=eq.${job.id}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({
-        status: "SUCCESS",
-        finished_at: new Date().toISOString(),
-      }),
-    }
-  );
-
-  console.log(
-    "Sync job completed successfully."
-  );
-
-  console.log("Engine test: PASS");
 }
 
-main().catch(error => {
+testOfficialSource().catch(error => {
   console.error(
-    "Official sync failed:"
+    "Official source test failed:"
   );
 
   console.error(error.message);
