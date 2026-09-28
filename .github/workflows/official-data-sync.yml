@@ -21,4 +21,7 @@ jobs:
           node-version: 20
 
       - name: Run official data sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-official-data.mjs
