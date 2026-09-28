@@ -21,4 +21,4 @@ jobs:
           node-version: 20
 
       - name: Run official data sync
-        run: echo "HoKStation official sync engine ready"
+        run: node scripts/sync-official-data.mjs
