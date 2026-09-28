@@ -8,7 +8,6 @@ permissions:
 
 jobs:
   sync:
-    name: Sync official HoK data
     runs-on: ubuntu-latest
 
     steps:
