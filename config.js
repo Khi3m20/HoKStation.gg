@@ -158,43 +158,69 @@
 
         database: freezeObject({
 
-            profiles: "profiles",
+    profiles: "profiles",
 
-            heroes: "heroes",
+    heroes: "heroes",
 
-            equipment: "equipment",
+    heroSkills: "hero_skills",
 
-            builds: "builds",
+    heroSkins: "hero_skins",
 
-            favorites: "favorites",
+    equipment: "equipment",
 
-            activity: "activity",
+    equipmentEffects: "equipment_effects",
 
-            questions: "questions",
+    seasons: "seasons",
 
-            questionAnswers: "question_answers",
+    patches: "patches",
 
-            reports: "reports",
+    patchNotes: "patch_notes",
 
-            patches: "patches",
+    changeLogs: "change_logs",
 
-            changeLogs: "change_logs",
+    rawSnapshots: "raw_update_snapshots",
 
-            rawSnapshots: "raw_snapshots",
+    metaTracker: "meta_tracker",
 
-            notices: "notices",
+    heroStats: "hero_stats",
 
-            meta: "meta",
+    builds: "builds",
 
-            ads: "ads",
+    buildItems: "build_items",
 
-            tokenShops: "token_shops",
+    userActivity: "user_activity",
 
-            adminLogs: "admin_logs",
+    shareLinks: "share_links",
 
-            platformSettings: "platform_settings"
+    questions: "questions",
 
-        }),
+    answers: "answers",
+
+    votes: "votes",
+
+    reports: "reports",
+
+    news: "news",
+
+    guides: "guides",
+
+    relatedContent: "related_content",
+
+    sitePromotions: "site_promotions",
+
+    officialLinks: "official_links",
+
+    settings: "settings",
+
+    dataSources: "data_sources",
+
+    syncJobs: "sync_jobs",
+
+    auditLogs: "audit_logs",
+
+    maintenance: "maintenance"
+
+}),
 
 
         /* =====================================================
