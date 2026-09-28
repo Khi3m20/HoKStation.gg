@@ -157,69 +157,48 @@
            ===================================================== */
 
         database: freezeObject({
+    tables: freezeObject({
+        profiles: "profiles",
 
-    profiles: "profiles",
+        heroes: "heroes",
+        heroSkills: "hero_skills",
+        heroSkins: "hero_skins",
 
-    heroes: "heroes",
+        equipment: "equipment",
+        equipmentEffects: "equipment_effects",
+        seasons: "seasons",
 
-    heroSkills: "hero_skills",
+        builds: "builds",
+        buildItems: "build_items",
+        userActivity: "user_activity",
+        shareLinks: "share_links",
 
-    heroSkins: "hero_skins",
+        patches: "patches",
+        patchNotes: "patch_notes",
+        changeLogs: "change_logs",
+        rawSnapshots: "raw_update_snapshots",
 
-    equipment: "equipment",
+        meta: "meta_tracker",
+        heroStats: "hero_stats",
 
-    equipmentEffects: "equipment_effects",
+        questions: "questions",
+        answers: "answers",
+        votes: "votes",
+        reports: "reports",
 
-    seasons: "seasons",
+        news: "news",
+        guides: "guides",
+        relatedContent: "related_content",
 
-    patches: "patches",
+        sitePromotions: "site_promotions",
+        officialLinks: "official_links",
+        settings: "settings",
 
-    patchNotes: "patch_notes",
-
-    changeLogs: "change_logs",
-
-    rawSnapshots: "raw_update_snapshots",
-
-    metaTracker: "meta_tracker",
-
-    heroStats: "hero_stats",
-
-    builds: "builds",
-
-    buildItems: "build_items",
-
-    userActivity: "user_activity",
-
-    shareLinks: "share_links",
-
-    questions: "questions",
-
-    answers: "answers",
-
-    votes: "votes",
-
-    reports: "reports",
-
-    news: "news",
-
-    guides: "guides",
-
-    relatedContent: "related_content",
-
-    sitePromotions: "site_promotions",
-
-    officialLinks: "official_links",
-
-    settings: "settings",
-
-    dataSources: "data_sources",
-
-    syncJobs: "sync_jobs",
-
-    auditLogs: "audit_logs",
-
-    maintenance: "maintenance"
-
+        dataSources: "data_sources",
+        syncJobs: "sync_jobs",
+        auditLogs: "audit_logs",
+        maintenance: "maintenance"
+    })
 }),
 
 
