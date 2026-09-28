@@ -1,0 +1,2099 @@
+/* ============================================================
+   HOKSTATION.GG
+   FILE 3 / 8 — effects.css
+
+   SOURCE OF TRUTH:
+   index.html — File 1/8
+
+   PURPOSE:
+   - Premium motion
+   - Subtle neon effects
+   - Hover / focus interactions
+   - Loading animation
+   - Carousel transitions
+   - Modal / panel transitions
+   - Micro-interactions
+   - Status animations
+
+   IMPORTANT:
+   - No WestJet branding or imagery
+   - No layout ownership
+   - No major color-system overrides
+   - Readability always comes first
+   - Reduced Motion support included
+   ============================================================ */
+
+
+/* ============================================================
+   01. GLOBAL MOTION TOKENS
+   ============================================================ */
+
+:root {
+    --motion-fast: 150ms;
+    --motion-normal: 240ms;
+    --motion-medium: 360ms;
+    --motion-slow: 600ms;
+    --motion-cinematic: 800ms;
+
+    --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
+    --ease-linear: linear;
+
+    --glow-red-soft:
+        0 0 24px rgba(230, 59, 63, 0.14);
+
+    --glow-orange-soft:
+        0 0 24px rgba(255, 138, 42, 0.12);
+
+    --glow-cyan-soft:
+        0 0 24px rgba(85, 215, 232, 0.10);
+}
+
+
+/* ============================================================
+   02. GLOBAL TRANSITIONS
+   ============================================================ */
+
+a,
+button,
+input,
+select,
+textarea,
+.site-brand,
+.nav-link,
+.filter-chip,
+.quick-card,
+.featured-card,
+.panel,
+.card,
+.account-menu-item,
+.admin-card,
+.build-slot,
+.slot-select-button,
+.inline-link,
+.secondary-button,
+.primary-button,
+.danger-button,
+.icon-button,
+.account-button,
+.mobile-menu-button,
+.status-indicator,
+.role-badge {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard),
+        opacity var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard),
+        filter var(--motion-normal) var(--ease-standard);
+}
+
+
+/* ============================================================
+   03. PAGE LOAD
+   ============================================================ */
+
+.app {
+    animation:
+        app-enter
+        700ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes app-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ============================================================
+   04. APP LOADER
+   ============================================================ */
+
+.app-loader {
+    transition:
+        opacity 500ms var(--ease-smooth),
+        visibility 500ms var(--ease-smooth);
+}
+
+.app-loader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loader-mark {
+    animation:
+        loader-mark-pulse
+        1.8s
+        ease-in-out
+        infinite;
+}
+
+@keyframes loader-mark-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.82;
+    }
+
+    50% {
+        transform: scale(1.045);
+        opacity: 1;
+    }
+}
+
+.loader-progress span,
+#loader-progress-bar {
+    transition:
+        width 400ms var(--ease-smooth);
+}
+
+
+/* ============================================================
+   05. STATUS DOTS
+   ============================================================ */
+
+.status-dot {
+    animation:
+        status-pulse
+        2.2s
+        ease-in-out
+        infinite;
+}
+
+@keyframes status-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+.status-indicator {
+    animation:
+        indicator-breathe
+        2.4s
+        ease-in-out
+        infinite;
+}
+
+@keyframes indicator-breathe {
+    0%,
+    100% {
+        box-shadow:
+            0 0 0 rgba(84, 211, 138, 0);
+    }
+
+    50% {
+        box-shadow:
+            0 0 14px rgba(84, 211, 138, 0.24);
+    }
+}
+
+
+/* ============================================================
+   06. HEADER
+   ============================================================ */
+
+.site-header {
+    transition:
+        background-color 300ms var(--ease-standard),
+        border-color 300ms var(--ease-standard),
+        box-shadow 300ms var(--ease-standard),
+        backdrop-filter 300ms var(--ease-standard);
+}
+
+.site-header.is-scrolled {
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.24);
+}
+
+.site-brand:hover {
+    transform: translateY(-1px);
+}
+
+.brand-symbol {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard);
+}
+
+.site-brand:hover .brand-symbol {
+    transform: translateY(-1px) rotate(-2deg);
+    box-shadow:
+        var(--glow-red-soft);
+}
+
+
+/* ============================================================
+   07. DESKTOP NAVIGATION
+   ============================================================ */
+
+.nav-link {
+    position: relative;
+}
+
+.nav-link::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    width: 0;
+    height: 2px;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transform: translateX(-50%);
+    transition:
+        width var(--motion-normal) var(--ease-standard);
+}
+
+.nav-link:hover::after,
+.nav-link.is-active::after {
+    width: 24px;
+}
+
+.nav-link:hover {
+    transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   08. BUTTON MICRO-INTERACTIONS
+   ============================================================ */
+
+.primary-button,
+.secondary-button,
+.danger-button {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.primary-button::before,
+.secondary-button::before,
+.danger-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background:
+        linear-gradient(
+            110deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.12) 45%,
+            transparent 70%
+        );
+    transform:
+        translateX(-120%);
+    transition:
+        opacity 200ms ease,
+        transform 550ms var(--ease-smooth);
+    z-index: -1;
+}
+
+.primary-button:hover::before,
+.secondary-button:hover::before,
+.danger-button:hover::before {
+    opacity: 1;
+    transform:
+        translateX(120%);
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.danger-button:hover {
+    transform: translateY(-2px);
+}
+
+.primary-button:active,
+.secondary-button:active,
+.danger-button:active {
+    transform:
+        translateY(0)
+        scale(0.985);
+}
+
+
+/* ============================================================
+   09. ICON BUTTON
+   ============================================================ */
+
+.icon-button {
+    position: relative;
+}
+
+.icon-button:hover {
+    transform:
+        translateY(-1px)
+        scale(1.025);
+}
+
+.icon-button:active {
+    transform:
+        translateY(0)
+        scale(0.96);
+}
+
+
+/* ============================================================
+   10. ACCOUNT BUTTON
+   ============================================================ */
+
+.account-button:hover {
+    transform: translateY(-1px);
+}
+
+.account-avatar {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.account-button:hover .account-avatar {
+    transform: scale(1.05);
+    box-shadow:
+        var(--glow-red-soft);
+}
+
+
+/* ============================================================
+   11. MOBILE MENU BUTTON
+   ============================================================ */
+
+.mobile-menu-button span {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        opacity var(--motion-normal) var(--ease-standard);
+}
+
+.mobile-menu-button.is-open span:nth-child(1) {
+    transform:
+        translateY(7px)
+        rotate(45deg);
+}
+
+.mobile-menu-button.is-open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.mobile-menu-button.is-open span:nth-child(3) {
+    transform:
+        translateY(-7px)
+        rotate(-45deg);
+}
+
+
+/* ============================================================
+   12. MOBILE NAVIGATION
+   ============================================================ */
+
+.mobile-navigation {
+    transition:
+        opacity 300ms var(--ease-smooth),
+        visibility 300ms var(--ease-smooth),
+        transform 400ms var(--ease-smooth);
+}
+
+.mobile-navigation.is-open {
+    transform: translateX(0);
+}
+
+.mobile-nav-link {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        padding-left var(--motion-normal) var(--ease-standard);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.is-active {
+    padding-left: 8px;
+}
+
+
+/* ============================================================
+   13. SEARCH PANEL
+   ============================================================ */
+
+.search-panel {
+    transition:
+        opacity 300ms var(--ease-smooth),
+        visibility 300ms var(--ease-smooth),
+        backdrop-filter 300ms var(--ease-smooth);
+}
+
+.search-panel-inner {
+    transition:
+        transform 450ms var(--ease-smooth),
+        opacity 300ms var(--ease-standard);
+    transform: translateY(-18px);
+    opacity: 0;
+}
+
+.search-panel.is-open .search-panel-inner {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.search-input-shell {
+    transition:
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.search-input-shell:focus-within {
+    box-shadow:
+        0 0 0 3px rgba(230, 59, 63, 0.08),
+        var(--glow-red-soft);
+}
+
+
+/* ============================================================
+   14. FILTER CHIPS
+   ============================================================ */
+
+.filter-chip {
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-chip::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(
+            120deg,
+            transparent,
+            rgba(255, 255, 255, 0.06),
+            transparent
+        );
+    transform: translateX(-120%);
+    transition:
+        transform 500ms var(--ease-smooth);
+}
+
+.filter-chip:hover::before {
+    transform: translateX(120%);
+}
+
+.filter-chip:hover {
+    transform: translateY(-1px);
+}
+
+.filter-chip.is-active {
+    box-shadow:
+        0 6px 18px rgba(230, 59, 63, 0.10);
+}
+
+
+/* ============================================================
+   15. HOME HERO
+   ============================================================ */
+
+.home-hero {
+    animation:
+        hero-enter
+        800ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes hero-enter {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-kicker {
+    animation:
+        hero-kicker-enter
+        700ms
+        120ms
+        var(--ease-smooth)
+        both;
+}
+
+.hero-content h1 {
+    animation:
+        hero-title-enter
+        850ms
+        180ms
+        var(--ease-smooth)
+        both;
+}
+
+.hero-description {
+    animation:
+        hero-description-enter
+        800ms
+        280ms
+        var(--ease-smooth)
+        both;
+}
+
+.hero-actions {
+    animation:
+        hero-actions-enter
+        800ms
+        360ms
+        var(--ease-smooth)
+        both;
+}
+
+.hero-meta {
+    animation:
+        hero-meta-enter
+        700ms
+        440ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes hero-kicker-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes hero-title-enter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes hero-description-enter {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes hero-actions-enter {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes hero-meta-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ============================================================
+   16. HERO VISUAL
+   ============================================================ */
+
+.hero-visual-frame {
+    animation:
+        visual-frame-breathe
+        6s
+        ease-in-out
+        infinite;
+}
+
+@keyframes visual-frame-breathe {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.visual-grid {
+    animation:
+        grid-drift
+        12s
+        linear
+        infinite;
+}
+
+@keyframes grid-drift {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(36px);
+    }
+}
+
+.visual-orbit {
+    transform-origin: center;
+}
+
+.orbit-one {
+    animation:
+        orbit-rotate-one
+        18s
+        linear
+        infinite;
+}
+
+.orbit-two {
+    animation:
+        orbit-rotate-two
+        26s
+        linear
+        infinite reverse;
+}
+
+@keyframes orbit-rotate-one {
+    from {
+        transform:
+            translate(-50%, -50%)
+            rotate(0deg);
+    }
+
+    to {
+        transform:
+            translate(-50%, -50%)
+            rotate(360deg);
+    }
+}
+
+@keyframes orbit-rotate-two {
+    from {
+        transform:
+            translate(-50%, -50%)
+            rotate(0deg);
+    }
+
+    to {
+        transform:
+            translate(-50%, -50%)
+            rotate(360deg);
+    }
+}
+
+.visual-center {
+    animation:
+        center-float
+        5s
+        ease-in-out
+        infinite;
+}
+
+@keyframes center-float {
+    0%,
+    100% {
+        transform: translate(-50%, -50%);
+    }
+
+    50% {
+        transform:
+            translate(-50%, calc(-50% - 5px));
+    }
+}
+
+.visual-center-mark {
+    animation:
+        mark-glow
+        3s
+        ease-in-out
+        infinite;
+}
+
+@keyframes mark-glow {
+    0%,
+    100% {
+        box-shadow:
+            0 0 0 rgba(230, 59, 63, 0);
+    }
+
+    50% {
+        box-shadow:
+            0 0 28px rgba(230, 59, 63, 0.16);
+    }
+}
+
+
+/* ============================================================
+   17. FEATURED CAROUSEL
+   ============================================================ */
+
+/*
+   HTML source:
+   #featured-carousel
+   .featured-card
+   .featured-card.is-active
+   #featured-prev
+   #featured-next
+
+   Only .is-active is visible.
+   JavaScript controls the active slide.
+*/
+
+.featured-carousel {
+    position: relative;
+}
+
+.featured-card {
+    transition:
+        opacity 500ms var(--ease-smooth),
+        transform 600ms var(--ease-smooth),
+        filter 500ms var(--ease-smooth);
+}
+
+.featured-card:not(.is-active) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    transform:
+        translateX(18px)
+        scale(0.985);
+    filter: blur(3px);
+}
+
+.featured-card.is-active {
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+    transform:
+        translateX(0)
+        scale(1);
+    filter: blur(0);
+}
+
+.featured-card.is-active .featured-card-content {
+    animation:
+        featured-content-enter
+        550ms
+        var(--ease-smooth)
+        both;
+}
+
+.featured-card.is-active .featured-art-placeholder {
+    animation:
+        featured-art-enter
+        700ms
+        80ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes featured-content-enter {
+    from {
+        opacity: 0;
+        transform: translateX(-14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes featured-art-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateX(18px)
+            scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateX(0)
+            scale(1);
+    }
+}
+
+.featured-art-placeholder {
+    transition:
+        transform var(--motion-medium) var(--ease-smooth),
+        box-shadow var(--motion-medium) var(--ease-smooth),
+        border-color var(--motion-medium) var(--ease-smooth);
+}
+
+.featured-card:hover .featured-art-placeholder {
+    transform:
+        scale(1.015)
+        translateY(-2px);
+}
+
+
+/* ============================================================
+   18. CAROUSEL CONTROLS
+   ============================================================ */
+
+.carousel-controls .icon-button:hover {
+    transform:
+        translateY(-2px)
+        scale(1.04);
+}
+
+#featured-prev:active,
+#featured-next:active {
+    transform: scale(0.92);
+}
+
+
+/* ============================================================
+   19. QUICK ACCESS CARDS
+   ============================================================ */
+
+.quick-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transform:
+        scaleX(0);
+    transform-origin: left;
+    transition:
+        transform var(--motion-medium) var(--ease-smooth);
+}
+
+.quick-card:hover {
+    transform:
+        translateY(-4px);
+    box-shadow:
+        var(--shadow-medium),
+        var(--glow-red-soft);
+}
+
+.quick-card:hover::after {
+    transform:
+        scaleX(1);
+}
+
+.quick-number {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.quick-card:hover .quick-number {
+    transform:
+        translateX(3px);
+}
+
+
+/* ============================================================
+   20. GENERIC CARDS
+   ============================================================ */
+
+.card,
+.hero-card,
+.equipment-card,
+.build-card,
+.meta-card,
+.notice-card,
+.question-card,
+.history-card,
+.activity-card,
+.saved-build-card {
+    animation:
+        card-enter
+        500ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+.card:hover,
+.hero-card:hover,
+.equipment-card:hover,
+.build-card:hover,
+.meta-card:hover,
+.notice-card:hover,
+.question-card:hover,
+.history-card:hover,
+.activity-card:hover,
+.saved-build-card:hover {
+    transform:
+        translateY(-3px);
+}
+
+
+/* ============================================================
+   21. HERO / EQUIPMENT / BUILD GRID STAGGER
+   ============================================================ */
+
+.card-grid > *:nth-child(1) {
+    animation-delay: 30ms;
+}
+
+.card-grid > *:nth-child(2) {
+    animation-delay: 60ms;
+}
+
+.card-grid > *:nth-child(3) {
+    animation-delay: 90ms;
+}
+
+.card-grid > *:nth-child(4) {
+    animation-delay: 120ms;
+}
+
+.card-grid > *:nth-child(5) {
+    animation-delay: 150ms;
+}
+
+.card-grid > *:nth-child(6) {
+    animation-delay: 180ms;
+}
+
+.card-grid > *:nth-child(7) {
+    animation-delay: 210ms;
+}
+
+.card-grid > *:nth-child(8) {
+    animation-delay: 240ms;
+}
+
+
+/* ============================================================
+   22. PANELS
+   ============================================================ */
+
+.panel {
+    transition:
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.panel:hover {
+    border-color:
+        rgba(220, 235, 245, 0.15);
+}
+
+
+/* ============================================================
+   23. BUILD FEATURE PANEL
+   ============================================================ */
+
+.build-feature-panel {
+    animation:
+        feature-panel-enter
+        650ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes feature-panel-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+.stat-preview-item {
+    transition:
+        background-color var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.stat-preview-item:hover {
+    transform:
+        translateY(-2px);
+}
+
+
+/* ============================================================
+   24. BUILD SLOTS
+   ============================================================ */
+
+.build-slot {
+    position: relative;
+}
+
+.build-slot::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transform:
+        scaleY(0);
+    transform-origin: center;
+    transition:
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.build-slot:hover {
+    transform:
+        translateX(3px);
+}
+
+.build-slot:hover::before,
+.build-slot.is-selected::before {
+    transform:
+        scaleY(1);
+}
+
+.slot-number {
+    transition:
+        color var(--motion-normal) var(--ease-standard);
+}
+
+.build-slot:hover .slot-number {
+    color:
+        var(--accent-orange);
+}
+
+.slot-select-button:hover {
+    transform:
+        translateY(-1px);
+}
+
+
+/* ============================================================
+   25. BUILD STAT ROWS
+   ============================================================ */
+
+.build-stat-row {
+    transition:
+        background-color var(--motion-fast) var(--ease-standard),
+        padding-left var(--motion-fast) var(--ease-standard);
+}
+
+.build-stat-row:hover {
+    padding-left: 6px;
+}
+
+
+/* ============================================================
+   26. SELECTOR CARDS
+   ============================================================ */
+
+.selector-grid > * {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.selector-grid > *:hover {
+    transform:
+        translateY(-2px);
+}
+
+
+/* ============================================================
+   27. FORM FIELDS
+   ============================================================ */
+
+.field input,
+.field textarea,
+.field select,
+.select-field select,
+.compare-selector select {
+    transition:
+        border-color var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+.select-field select:focus,
+.compare-selector select:focus {
+    box-shadow:
+        0 0 0 3px rgba(230, 59, 63, 0.08),
+        0 0 20px rgba(230, 59, 63, 0.07);
+}
+
+
+/* ============================================================
+   28. COMPARE
+   ============================================================ */
+
+.compare-vs {
+    animation:
+        compare-pulse
+        2.8s
+        ease-in-out
+        infinite;
+}
+
+@keyframes compare-pulse {
+    0%,
+    100% {
+        opacity: 0.65;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.04);
+    }
+}
+
+.compare-results {
+    transition:
+        opacity var(--motion-medium) var(--ease-smooth),
+        transform var(--motion-medium) var(--ease-smooth);
+}
+
+.compare-results.is-updating {
+    opacity: 0.45;
+    transform: translateY(4px);
+}
+
+
+/* ============================================================
+   29. PATCH / HISTORY LIST
+   ============================================================ */
+
+.patch-list > *,
+.history-list > *,
+.notice-list > *,
+.activity-list > *,
+.question-list > * {
+    animation:
+        list-item-enter
+        450ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes list-item-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+
+/* ============================================================
+   30. META CARDS
+   ============================================================ */
+
+.meta-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.meta-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            circle at 100% 0%,
+            rgba(230, 59, 63, 0.08),
+            transparent 38%
+        );
+    opacity: 0;
+    transition:
+        opacity var(--motion-medium) var(--ease-standard);
+}
+
+.meta-card:hover::after {
+    opacity: 1;
+}
+
+
+/* ============================================================
+   31. FAVORITES
+   ============================================================ */
+
+.favorites-tabs .filter-chip,
+.history-tabs .filter-chip,
+.community-tabs .filter-chip {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard);
+}
+
+
+/* ============================================================
+   32. COMMUNITY QUESTION CARDS
+   ============================================================ */
+
+.question-card {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.question-card:hover {
+    transform:
+        translateY(-3px);
+    box-shadow:
+        var(--shadow-medium);
+}
+
+
+/* ============================================================
+   33. ACCOUNT PANEL
+   ============================================================ */
+
+.account-panel {
+    transition:
+        opacity 300ms var(--ease-smooth),
+        visibility 300ms var(--ease-smooth);
+}
+
+.account-panel-inner {
+    transition:
+        transform 400ms var(--ease-smooth),
+        opacity 300ms var(--ease-standard);
+    transform:
+        translateX(22px);
+    opacity: 0;
+}
+
+.account-panel.is-open .account-panel-inner {
+    transform:
+        translateX(0);
+    opacity: 1;
+}
+
+.profile-avatar {
+    transition:
+        transform var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.profile-avatar:hover {
+    transform:
+        scale(1.04);
+    box-shadow:
+        var(--glow-red-soft);
+}
+
+.account-menu-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.account-menu-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transform:
+        scaleY(0);
+    transition:
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.account-menu-item:hover::before {
+    transform:
+        scaleY(1);
+}
+
+.account-menu-item:hover {
+    transform:
+        translateX(3px);
+}
+
+
+/* ============================================================
+   34. AUTH MODAL
+   ============================================================ */
+
+.auth-brand {
+    animation:
+        auth-brand-enter
+        500ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes auth-brand-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+.auth-tab {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        border-color var(--motion-normal) var(--ease-standard),
+        background-color var(--motion-normal) var(--ease-standard);
+}
+
+
+/* ============================================================
+   35. MODALS
+   ============================================================ */
+
+.modal-overlay {
+    transition:
+        opacity 280ms var(--ease-smooth),
+        visibility 280ms var(--ease-smooth),
+        backdrop-filter 280ms var(--ease-smooth);
+}
+
+.modal-card {
+    transition:
+        transform 380ms var(--ease-smooth),
+        opacity 280ms var(--ease-standard);
+    transform:
+        translateY(18px)
+        scale(0.985);
+    opacity: 0;
+}
+
+.modal-overlay.is-open .modal-card {
+    transform:
+        translateY(0)
+        scale(1);
+    opacity: 1;
+}
+
+.modal-close:hover {
+    transform:
+        rotate(90deg)
+        scale(1.04);
+}
+
+.modal-close:active {
+    transform:
+        rotate(90deg)
+        scale(0.92);
+}
+
+
+/* ============================================================
+   36. EQUIPMENT SELECTOR
+   ============================================================ */
+
+.equipment-selector-list > * {
+    animation:
+        selector-item-enter
+        350ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes selector-item-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(7px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+
+/* ============================================================
+   37. SHARE / COPY
+   ============================================================ */
+
+.copy-field input {
+    transition:
+        border-color var(--motion-normal) var(--ease-standard),
+        box-shadow var(--motion-normal) var(--ease-standard);
+}
+
+.copy-field.is-copied input {
+    box-shadow:
+        0 0 0 3px rgba(84, 211, 138, 0.08),
+        var(--glow-cyan-soft);
+}
+
+
+/* ============================================================
+   38. CONFIRM MODAL
+   ============================================================ */
+
+.confirm-card .modal-heading {
+    animation:
+        confirm-enter
+        400ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes confirm-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+
+/* ============================================================
+   39. TOAST SYSTEM
+   ============================================================ */
+
+.toast-container {
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    animation:
+        toast-enter
+        420ms
+        var(--ease-smooth)
+        both;
+}
+
+.toast.is-leaving {
+    animation:
+        toast-leave
+        300ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes toast-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(12px)
+            scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+@keyframes toast-leave {
+    from {
+        opacity: 1;
+        transform:
+            translateY(0)
+            scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform:
+            translateY(8px)
+            scale(0.97);
+    }
+}
+
+
+/* ============================================================
+   40. GLOBAL ERROR
+   ============================================================ */
+
+.global-error {
+    transition:
+        opacity 300ms var(--ease-smooth),
+        visibility 300ms var(--ease-smooth),
+        transform 300ms var(--ease-smooth);
+}
+
+.global-error:not(.hidden) {
+    animation:
+        error-enter
+        450ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes error-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+.error-icon {
+    animation:
+        error-pulse
+        2s
+        ease-in-out
+        infinite;
+}
+
+@keyframes error-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 0 0 rgba(255, 85, 90, 0);
+    }
+
+    50% {
+        box-shadow:
+            0 0 18px rgba(255, 85, 90, 0.16);
+    }
+}
+
+
+/* ============================================================
+   41. ADMIN DASHBOARD
+   ============================================================ */
+
+.admin-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transform:
+        scaleY(0);
+    transform-origin: center;
+    transition:
+        transform var(--motion-medium) var(--ease-smooth);
+}
+
+.admin-card:hover {
+    transform:
+        translateY(-4px);
+    box-shadow:
+        var(--shadow-medium);
+}
+
+.admin-card:hover::before {
+    transform:
+        scaleY(1);
+}
+
+.admin-number {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.admin-card:hover .admin-number {
+    transform:
+        translateX(4px);
+    color:
+        var(--accent-orange);
+}
+
+
+/* ============================================================
+   42. FOOTER
+   ============================================================ */
+
+.footer-column a,
+.footer-column button {
+    transition:
+        color var(--motion-normal) var(--ease-standard),
+        transform var(--motion-normal) var(--ease-standard);
+}
+
+.footer-column a:hover,
+.footer-column button:hover {
+    transform:
+        translateX(3px);
+}
+
+
+/* ============================================================
+   43. FOCUS ACCESSIBILITY
+   ============================================================ */
+
+:focus-visible {
+    outline:
+        2px solid var(--accent-orange);
+    outline-offset:
+        3px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    box-shadow:
+        0 0 0 3px rgba(255, 138, 42, 0.10);
+}
+
+
+/* ============================================================
+   44. LINK MICRO-INTERACTIONS
+   ============================================================ */
+
+.inline-link {
+    position: relative;
+}
+
+.inline-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 100%;
+    bottom: -3px;
+    height: 1px;
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent-red),
+            var(--accent-orange)
+        );
+    transition:
+        right var(--motion-normal) var(--ease-standard);
+}
+
+.inline-link:hover::after {
+    right: 0;
+}
+
+.inline-link:hover {
+    transform:
+        translateX(2px);
+}
+
+
+/* ============================================================
+   45. EMPTY STATES
+   ============================================================ */
+
+.empty-state {
+    animation:
+        empty-enter
+        450ms
+        var(--ease-smooth)
+        both;
+}
+
+@keyframes empty-enter {
+    from {
+        opacity: 0;
+        transform:
+            translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform:
+            translateY(0);
+    }
+}
+
+.empty-icon {
+    transition:
+        transform var(--motion-medium) var(--ease-smooth),
+        color var(--motion-normal) var(--ease-standard);
+}
+
+.empty-state:hover .empty-icon {
+    transform:
+        translateY(-3px);
+}
+
+
+/* ============================================================
+   46. LOADING STATES
+   ============================================================ */
+
+.is-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(
+            110deg,
+            transparent 20%,
+            rgba(255, 255, 255, 0.045) 45%,
+            transparent 70%
+        );
+    background-size:
+        200% 100%;
+    animation:
+        loading-sweep
+        1.4s
+        linear
+        infinite;
+}
+
+@keyframes loading-sweep {
+    from {
+        background-position:
+            200% 0;
+    }
+
+    to {
+        background-position:
+            -200% 0;
+    }
+}
+
+
+/* ============================================================
+   47. SHIMMER UTILITY
+   ============================================================ */
+
+.shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(
+            100deg,
+            transparent 20%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 80%
+        );
+    transform:
+        translateX(-100%);
+    animation:
+        shimmer-sweep
+        2.2s
+        linear
+        infinite;
+}
+
+@keyframes shimmer-sweep {
+    100% {
+        transform:
+            translateX(100%);
+    }
+}
+
+
+/* ============================================================
+   48. DATA FRESHNESS
+   ============================================================ */
+
+.freshness-panel {
+    transition:
+        border-color var(--motion-medium) var(--ease-standard),
+        box-shadow var(--motion-medium) var(--ease-standard);
+}
+
+.freshness-panel:hover {
+    box-shadow:
+        var(--shadow-medium),
+        var(--glow-cyan-soft);
+}
+
+
+/* ============================================================
+   49. REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    .visual-grid,
+    .visual-orbit,
+    .visual-center,
+    .status-dot,
+    .status-indicator,
+    .compare-vs,
+    .loader-mark,
+    .shimmer::after,
+    .is-loading::after {
+        animation: none !important;
+    }
+
+    .featured-card:not(.is-active) {
+        filter: none;
+    }
+}
+
+
+/* ============================================================
+   50. MANUAL REDUCED-MOTION SETTING
+   account.js / app.js may add this class to <html> or <body>.
+   ============================================================ */
+
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after,
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+}
+
+
+/* ============================================================
+   51. SMALL-SCREEN MOTION CONTROL
+   ============================================================ */
+
+@media (max-width: 640px) {
+
+    .home-hero,
+    .hero-content h1,
+    .hero-description,
+    .hero-actions,
+    .hero-meta {
+        animation-duration: 500ms;
+    }
+
+    .hero-visual-frame {
+        animation-duration: 8s;
+    }
+
+    .visual-orbit {
+        opacity: 0.72;
+    }
+
+    .featured-card.is-active .featured-card-content,
+    .featured-card.is-active .featured-art-placeholder {
+        animation-duration: 450ms;
+    }
+
+    .card,
+    .hero-card,
+    .equipment-card,
+    .build-card,
+    .meta-card,
+    .notice-card,
+    .question-card,
+    .history-card,
+    .activity-card,
+    .saved-build-card {
+        animation-duration: 350ms;
+    }
+}
+
+
+/* ============================================================
+   52. TOUCH DEVICES
+   ============================================================ */
+
+@media (hover: none) {
+
+    .primary-button:hover,
+    .secondary-button:hover,
+    .danger-button:hover,
+    .quick-card:hover,
+    .admin-card:hover,
+    .panel:hover,
+    .card:hover,
+    .hero-card:hover,
+    .equipment-card:hover,
+    .build-card:hover,
+    .meta-card:hover,
+    .notice-card:hover,
+    .question-card:hover,
+    .history-card:hover,
+    .activity-card:hover,
+    .saved-build-card:hover {
+        transform: none;
+    }
+
+    .featured-card:hover .featured-art-placeholder {
+        transform: none;
+    }
+
+    .quick-card:hover::after,
+    .admin-card:hover::before {
+        transform: scaleX(0);
+    }
+}
+
+
+/* ============================================================
+   53. FINAL SAFETY RULES
+   ============================================================ */
+
+/*
+   Effects must never become more important than content.
+
+   No aggressive flashing.
+   No rapid strobing.
+   No automatic page scrolling.
+   No forced carousel movement here.
+   JavaScript owns carousel state.
+
+   CSS only reacts to:
+   - .is-active
+   - .is-open
+   - .is-loading
+   - .is-selected
+   - .is-updating
+   - .is-leaving
+   - .is-hidden
+   - .reduced-motion
+
+   This keeps File 3 compatible with the HTML architecture.
+*/
+
+
+/* ============================================================
+   END FILE 3 / 8
+   ============================================================ */
