@@ -2,101 +2,108 @@
    HOKSTATION.GG
    FILE 6 / 8 — app.js
 
-   CORE APPLICATION CONTROLLER
+   CORE APPLICATION LAYER
    ---------------------------------------------------------
    Responsibilities:
-   - Application boot
+   - Routing
+   - Navigation
+   - Search UI
+   - Global modals
+   - Toasts
    - Loader
-   - Hash routing
-   - Navigation state
-   - Mobile navigation
-   - Global search panel
-   - Search result routing
    - Featured carousel
-   - Generic modals
-   - Toast notifications
-   - Global error handling
-   - Shared DOM utilities
-   - Reduced-motion support
-   - URL / share utilities
-   - Safe communication with data.js / features.js / account.js
+   - Mobile navigation
+   - Account panel UI
+   - Global error UI
+   - Data freshness UI
+   - Generic share/copy helpers
+   - Generic confirmation modal
+   - Event bus / application events
 
-   NOT responsible for:
-   - Game data storage
-   - Hero rendering
-   - Equipment rendering
-   - Build rendering/calculation
-   - Authentication
-   - User profiles
-   - Admin authorization
-   - Database writes
+   Does NOT:
+   - Handle Supabase authentication
+   - Own hero/equipment/build rendering
+   - Own account permissions
+   - Store sensitive credentials
+   - Replace features.js or account.js
 
+   HTML SOURCE OF TRUTH:
+   index.html
+   ---------------------------------------------------------
    Dependency order:
    config.js
-       ↓
+   ↓
    data.js
-       ↓
+   ↓
    app.js
-       ↓
+   ↓
    features.js
-       ↓
+   ↓
    account.js
-
-   IMPORTANT:
-   - HoKStation.gg is independent.
-   - Never place secrets or service-role keys here.
    ========================================================= */
 
 (function () {
     "use strict";
 
-    /* =========================================================
+    /* =======================================================
        GLOBAL NAMESPACE
-       ========================================================= */
+       ======================================================= */
 
-    const APP = window.HOKSTATION_APP = window.HOKSTATION_APP || {};
+    const APP = {};
+    const CONFIG = window.HOKSTATION_CONFIG || {};
+    const DATA = window.HOKSTATION_DATA || {};
 
-    APP.version = "1.0.0";
-    APP.name = "HoKStation.gg";
+    window.HOKSTATION_APP = APP;
 
 
-    /* =========================================================
+    /* =======================================================
        INTERNAL STATE
-       ========================================================= */
+       ======================================================= */
 
     const state = {
+        initialized: false,
+
         currentRoute: "home",
         previousRoute: null,
 
         search: {
             query: "",
             type: "all",
-            isOpen: false
+            open: false
         },
 
         mobileNavigationOpen: false,
-
         accountPanelOpen: false,
 
-        featuredIndex: 0,
-
-        modalStack: [],
+        featured: {
+            index: 0,
+            cards: [],
+            initialized: false,
+            timer: null
+        },
 
         reducedMotion: false,
 
-        booted: false,
+        lastDataStatus: null,
 
-        ready: false,
+        confirmResolver: null,
 
-        lastError: null
+        routeListeners: [],
+        eventListeners: new Map(),
+
+        lastShareData: {
+            url: "",
+            title: "",
+            text: ""
+        }
     };
 
 
-    /* =========================================================
-       ROUTE DEFINITIONS
-       ========================================================= */
+    /* =======================================================
+       ROUTES
+       ======================================================= */
 
-    const ROUTES = new Set([
+    const VALID_ROUTES = new Set([
         "home",
         "heroes",
         "hero-detail",
@@ -119,294 +126,44 @@
         "search-results"
     ]);
 
-    const DEFAULT_ROUTE = "home";
 
+    /* =======================================================
+       DOM HELPERS
+       ======================================================= */
 
-    /* =========================================================
-       DOM CACHE
-       ========================================================= */
+    function $(selector, root) {
+        return (root || document).querySelector(selector);
+    }
 
-    const DOM = {};
-
-    function cacheDOM() {
-        const ids = [
-            "app-loader",
-            "loader-status",
-            "loader-progress-bar",
-
-            "toast-container",
-
-            "modal-root",
-
-            "global-search-panel",
-            "search-close",
-            "global-search-input",
-            "global-search-filters",
-            "global-search-results",
-
-            "mobile-navigation",
-            "mobile-menu-close",
-            "mobile-menu-trigger",
-            "mobile-account-trigger",
-
-            "account-panel",
-            "account-close",
-            "account-trigger",
-
-            "auth-modal",
-            "auth-modal-close",
-            "login-open",
-            "register-open",
-            "forgot-password-open",
-            "recovery-back",
-
-            "main-content",
-            "site-header",
-            "site-footer",
-
-            "home-search-button",
-            "heroes-search-button",
-
-            "featured-carousel",
-            "featured-prev",
-            "featured-next",
-
-            "hero-grid",
-            "hero-empty",
-            "hero-sort",
-
-            "equipment-grid",
-
-            "build-grid",
-            "create-build-button",
-            "open-build-lab",
-
-            "save-build-button",
-            "share-build-button",
-            "clear-build-button",
-
-            "build-hero-selector",
-            "build-slots",
-
-            "compare-item-a",
-            "compare-item-b",
-            "compare-results",
-
-            "patch-list",
-
-            "data-history-list",
-
-            "meta-grid",
-
-            "favorites-content",
-
-            "question-list",
-            "ask-question-button",
-            "report-button",
-
-            "question-detail-content",
-
-            "saved-builds-grid",
-            "activity-list",
-
-            "language-setting",
-            "reduced-motion-setting",
-            "change-password-button",
-            "send-verification-button",
-
-            "admin-access-status",
-            "admin-panel-container",
-
-            "notice-list",
-
-            "search-results-page",
-            "search-results-summary",
-            "search-results-page-content",
-
-            "footer-report-button",
-
-            "equipment-selector-modal",
-            "equipment-selector-close",
-            "equipment-selector-search",
-            "equipment-selector-list",
-
-            "question-modal",
-            "question-modal-close",
-            "question-form",
-
-            "report-modal",
-            "report-modal-close",
-            "report-form",
-
-            "share-modal",
-            "share-modal-close",
-            "share-url",
-            "copy-share-url",
-            "native-share-button",
-
-            "confirm-modal",
-            "confirm-cancel",
-            "confirm-accept",
-            "confirm-modal-title",
-            "confirm-modal-message",
-
-            "global-error",
-            "global-error-message",
-            "global-error-close",
-
-            "home-hero-count",
-            "home-equipment-count",
-            "home-build-count",
-
-            "data-status-indicator",
-            "data-status-text",
-            "data-last-updated",
-
-            "patch-data-status",
-            "patch-data-status-text",
-            "patch-data-date",
-
-            "footer-status-dot",
-            "footer-status-text"
-        ];
-
-        ids.forEach(function (id) {
-            DOM[id] = document.getElementById(id);
-        });
-
-        DOM.routeLinks = Array.from(
-            document.querySelectorAll("[data-route]")
-        );
-
-        DOM.navLinks = Array.from(
-            document.querySelectorAll(".nav-link, .mobile-nav-link")
-        );
-
-        DOM.pageSections = Array.from(
-            document.querySelectorAll("[data-page]")
-        );
-
-        DOM.featuredCards = DOM.featuredCarousel
-            ? Array.from(
-                DOM.featuredCarousel.querySelectorAll(".featured-card")
-            )
-            : [];
-
-        DOM.searchTypeButtons = DOM.globalSearchFilters
-            ? Array.from(
-                DOM.globalSearchFilters.querySelectorAll("[data-search-type]")
-            )
-            : [];
-
-        DOM.heroRoleButtons = Array.from(
-            document.querySelectorAll("[data-hero-role]")
-        );
-
-        DOM.equipmentTypeButtons = Array.from(
-            document.querySelectorAll("[data-equipment-type]")
-        );
-
-        DOM.historyTabButtons = Array.from(
-            document.querySelectorAll("[data-history-tab]")
-        );
-
-        DOM.favoriteTabButtons = Array.from(
-            document.querySelectorAll("[data-favorite-tab]")
-        );
-
-        DOM.communityFilterButtons = Array.from(
-            document.querySelectorAll("[data-community-filter]")
-        );
-
-        DOM.adminPanelButtons = Array.from(
-            document.querySelectorAll("[data-admin-panel]")
-        );
-
-        DOM.authTabs = Array.from(
-            document.querySelectorAll("[data-auth-tab]")
-        );
-
-        DOM.authForms = Array.from(
-            document.querySelectorAll("[data-auth-form]")
+    function $$(selector, root) {
+        return Array.from(
+            (root || document).querySelectorAll(selector)
         );
     }
 
-
-    /* =========================================================
-       CONFIG ACCESS
-       ========================================================= */
-
-    function getConfig() {
-        return window.HOKSTATION_CONFIG || {};
+    function byId(id) {
+        return document.getElementById(id);
     }
 
-    function getConfigValue(path, fallback) {
-        const config = getConfig();
+    function exists(id) {
+        return Boolean(byId(id));
+    }
 
-        if (!path) {
-            return fallback;
-        }
-
-        const parts = String(path).split(".");
-        let value = config;
-
-        for (let i = 0; i < parts.length; i += 1) {
-            if (
-                value === null ||
-                value === undefined ||
-                typeof value !== "object"
-            ) {
-                return fallback;
-            }
-
-            value = value[parts[i]];
-        }
-
-        return value === undefined ? fallback : value;
+    function isElement(value) {
+        return value instanceof Element;
     }
 
 
-    /* =========================================================
-       DATA API ACCESS
-       ========================================================= */
-
-    function getDataAPI() {
-        return window.HOKSTATION_DATA || null;
-    }
-
-    function getFeaturesAPI() {
-        return window.HOKSTATION_FEATURES || null;
-    }
-
-    function getAccountAPI() {
-        return window.HOKSTATION_ACCOUNT || null;
-    }
-
-
-    /* =========================================================
-       SAFE FUNCTION CALL
-       ========================================================= */
-
-    function safeCall(fn, fallback) {
-        try {
-            if (typeof fn !== "function") {
-                return fallback;
-            }
-
-            return fn();
-        } catch (error) {
-            console.error("[HoKStation] Safe call failed:", error);
-            return fallback;
-        }
-    }
-
-
-    /* =========================================================
-       STRING UTILITIES
-       ========================================================= */
+    /* =======================================================
+       SAFE HTML / TEXT HELPERS
+       ======================================================= */
 
     function escapeHTML(value) {
-        return String(value ?? "")
+        if (value === null || value === undefined) {
+            return "";
+        }
+
+        return String(value)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -414,48 +171,381 @@
             .replace(/'/g, "&#039;");
     }
 
-    function normalizeText(value) {
-        return String(value ?? "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .trim();
-    }
+    APP.escapeHTML = escapeHTML;
 
-    function truncate(value, length) {
-        const text = String(value ?? "");
 
-        if (text.length <= length) {
-            return text;
+    function safeText(value, fallback) {
+        if (
+            value === null ||
+            value === undefined ||
+            String(value).trim() === ""
+        ) {
+            return fallback || "";
         }
 
-        return text.slice(0, Math.max(0, length - 1)).trim() + "…";
-    }
-
-    function slugify(value) {
-        return normalizeText(value)
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "");
+        return String(value);
     }
 
 
-    /* =========================================================
-       DATE / NUMBER UTILITIES
-       ========================================================= */
-
-    function formatNumber(value) {
+    function safeNumber(value, fallback) {
         const number = Number(value);
 
-        if (!Number.isFinite(number)) {
-            return "—";
-        }
-
-        return new Intl.NumberFormat(undefined, {
-            maximumFractionDigits: 2
-        }).format(number);
+        return Number.isFinite(number)
+            ? number
+            : (fallback || 0);
     }
 
-    function formatDate(value, options) {
+
+    /* =======================================================
+       EVENT BUS
+       ======================================================= */
+
+    function on(eventName, handler) {
+        if (
+            typeof eventName !== "string" ||
+            typeof handler !== "function"
+        ) {
+            return function () {};
+        }
+
+        if (!state.eventListeners.has(eventName)) {
+            state.eventListeners.set(eventName, new Set());
+        }
+
+        state.eventListeners
+            .get(eventName)
+            .add(handler);
+
+        return function unsubscribe() {
+            const listeners =
+                state.eventListeners.get(eventName);
+
+            if (!listeners) {
+                return;
+            }
+
+            listeners.delete(handler);
+        };
+    }
+
+
+    function emit(eventName, detail) {
+        const listeners =
+            state.eventListeners.get(eventName);
+
+        if (listeners) {
+            listeners.forEach(function (handler) {
+                try {
+                    handler(detail);
+                } catch (error) {
+                    console.error(
+                        "[HoKStation] Event handler error:",
+                        error
+                    );
+                }
+            });
+        }
+
+        try {
+            document.dispatchEvent(
+                new CustomEvent(
+                    "hokstation:" + eventName,
+                    {
+                        detail: detail || {}
+                    }
+                )
+            );
+        } catch (error) {
+            /* Older browser fallback is intentionally silent. */
+        }
+    }
+
+
+    APP.on = on;
+    APP.emit = emit;
+
+
+    /* =======================================================
+       LOADER
+       ======================================================= */
+
+    function setLoaderProgress(value) {
+        const bar = byId("loader-progress-bar");
+        const progress = $(".loader-progress");
+
+        let percentage = Number(value);
+
+        if (!Number.isFinite(percentage)) {
+            percentage = 0;
+        }
+
+        percentage = Math.max(
+            0,
+            Math.min(100, percentage)
+        );
+
+        if (bar) {
+            bar.style.width = percentage + "%";
+        }
+
+        if (progress) {
+            progress.setAttribute(
+                "aria-valuenow",
+                String(Math.round(percentage))
+            );
+        }
+    }
+
+
+    function setLoaderStatus(message) {
+        const element = byId("loader-status");
+
+        if (element) {
+            element.textContent =
+                safeText(message, "Loading station...");
+        }
+    }
+
+
+    function hideLoader() {
+        const loader = byId("app-loader");
+
+        if (!loader) {
+            return;
+        }
+
+        setLoaderProgress(100);
+
+        loader.classList.add("is-complete");
+        loader.setAttribute("aria-hidden", "true");
+
+        window.setTimeout(function () {
+            loader.classList.add("hidden");
+        }, state.reducedMotion ? 0 : 350);
+    }
+
+
+    APP.setLoaderProgress = setLoaderProgress;
+    APP.setLoaderStatus = setLoaderStatus;
+    APP.hideLoader = hideLoader;
+
+
+    /* =======================================================
+       TOAST SYSTEM
+       ======================================================= */
+
+    function showToast(message, type, duration) {
+        const container = byId("toast-container");
+
+        if (!container) {
+            return null;
+        }
+
+        const toast = document.createElement("div");
+
+        toast.className =
+            "toast" +
+            (type ? " toast-" + String(type) : "");
+
+        toast.setAttribute("role", "status");
+
+        const content = document.createElement("span");
+
+        content.className = "toast-message";
+        content.textContent =
+            safeText(message, "Done.");
+
+        toast.appendChild(content);
+
+        container.appendChild(toast);
+
+        window.requestAnimationFrame(function () {
+            toast.classList.add("is-visible");
+        });
+
+        const timeout =
+            Number.isFinite(Number(duration))
+                ? Number(duration)
+                : 3500;
+
+        window.setTimeout(function () {
+            toast.classList.remove("is-visible");
+
+            window.setTimeout(function () {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, state.reducedMotion ? 0 : 250);
+        }, timeout);
+
+        return toast;
+    }
+
+
+    APP.toast = showToast;
+
+
+    /* =======================================================
+       GLOBAL ERROR
+       ======================================================= */
+
+    function showGlobalError(message) {
+        const wrapper = byId("global-error");
+        const text = byId("global-error-message");
+
+        if (text) {
+            text.textContent = safeText(
+                message,
+                "Some live features may be unavailable."
+            );
+        }
+
+        if (wrapper) {
+            wrapper.classList.remove("hidden");
+            wrapper.setAttribute("aria-hidden", "false");
+        }
+    }
+
+
+    function hideGlobalError() {
+        const wrapper = byId("global-error");
+
+        if (wrapper) {
+            wrapper.classList.add("hidden");
+            wrapper.setAttribute("aria-hidden", "true");
+        }
+    }
+
+
+    APP.showGlobalError = showGlobalError;
+    APP.hideGlobalError = hideGlobalError;
+
+
+    /* =======================================================
+       STATUS INDICATORS
+       ======================================================= */
+
+    function setStatusIndicator(element, status) {
+        if (!element) {
+            return;
+        }
+
+        element.classList.remove(
+            "is-online",
+            "is-warning",
+            "is-error",
+            "is-loading",
+            "is-offline",
+            "is-ready"
+        );
+
+        const normalized =
+            String(status || "")
+                .toLowerCase()
+                .replace(/\s+/g, "-");
+
+        if (
+            normalized === "ready" ||
+            normalized === "online" ||
+            normalized === "fresh" ||
+            normalized === "success"
+        ) {
+            element.classList.add("is-online");
+        } else if (
+            normalized === "warning" ||
+            normalized === "stale" ||
+            normalized === "partial"
+        ) {
+            element.classList.add("is-warning");
+        } else if (
+            normalized === "error" ||
+            normalized === "offline"
+        ) {
+            element.classList.add("is-error");
+        } else {
+            element.classList.add("is-loading");
+        }
+    }
+
+
+    function normalizeDataStatus(raw) {
+        if (!raw) {
+            return {
+                state: "not-configured",
+                label: "Data source not configured",
+                lastUpdated: null,
+                verifiedAt: null,
+                source: null
+            };
+        }
+
+        if (typeof raw === "string") {
+            return {
+                state: raw,
+                label: raw,
+                lastUpdated: null,
+                verifiedAt: null,
+                source: null
+            };
+        }
+
+        const status =
+            raw.state ||
+            raw.status ||
+            raw.dataState ||
+            "unknown";
+
+        let label =
+            raw.label ||
+            raw.message ||
+            "";
+
+        if (!label) {
+            switch (String(status).toLowerCase()) {
+                case "ready":
+                case "online":
+                case "fresh":
+                    label = "Data ready";
+                    break;
+
+                case "loading":
+                    label = "Loading data...";
+                    break;
+
+                case "stale":
+                    label = "Data may be outdated";
+                    break;
+
+                case "error":
+                    label = "Data unavailable";
+                    break;
+
+                case "not-configured":
+                    label = "Data source not configured";
+                    break;
+
+                default:
+                    label = "Data status unavailable";
+            }
+        }
+
+        return {
+            state: status,
+            label: label,
+            lastUpdated:
+                raw.lastUpdated ||
+                raw.last_updated ||
+                null,
+            verifiedAt:
+                raw.verifiedAt ||
+                raw.verified_at ||
+                null,
+            source: raw.source || null
+        };
+    }
+
+
+    function formatDate(value) {
         if (!value) {
             return "—";
         }
@@ -466,691 +556,1123 @@
             return "—";
         }
 
-        const defaultOptions = {
-            year: "numeric",
-            month: "short",
-            day: "numeric"
-        };
-
         try {
             return new Intl.DateTimeFormat(
                 undefined,
-                options || defaultOptions
+                {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric"
+                }
             ).format(date);
         } catch (error) {
-            return date.toLocaleDateString();
+            return date.toISOString().slice(0, 10);
         }
     }
 
-    function formatDateTime(value) {
-        if (!value) {
-            return "—";
-        }
 
-        return formatDate(value, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit"
-        });
-    }
+    function updateDataStatusUI(rawStatus) {
+        const status = normalizeDataStatus(rawStatus);
 
+        state.lastDataStatus = status;
 
-    /* =========================================================
-       LOADER
-       ========================================================= */
+        const homeIndicator =
+            byId("data-status-indicator");
 
-    function setLoaderProgress(value, message) {
-        const progress = Math.max(
-            0,
-            Math.min(100, Number(value) || 0)
+        const homeText =
+            byId("data-status-text");
+
+        const homeDate =
+            byId("data-last-updated");
+
+        const patchIndicator =
+            byId("patch-data-status");
+
+        const patchText =
+            byId("patch-data-status-text");
+
+        const patchDate =
+            byId("patch-data-date");
+
+        const footerIndicator =
+            byId("footer-status-dot");
+
+        const footerText =
+            byId("footer-status-text");
+
+        setStatusIndicator(
+            homeIndicator,
+            status.state
         );
 
-        if (DOM.loaderProgressBar) {
-            DOM.loaderProgressBar.style.width = progress + "%";
+        setStatusIndicator(
+            patchIndicator,
+            status.state
+        );
+
+        setStatusIndicator(
+            footerIndicator,
+            status.state
+        );
+
+        if (homeText) {
+            homeText.textContent = status.label;
         }
 
-        const progressElement =
-            DOM.loaderProgressBar &&
-            DOM.loaderProgressBar.parentElement;
-
-        if (progressElement) {
-            progressElement.setAttribute(
-                "aria-valuenow",
-                String(progress)
-            );
+        if (patchText) {
+            patchText.textContent = status.label;
         }
 
-        if (DOM.loaderStatus && message) {
-            DOM.loaderStatus.textContent = message;
+        const formattedDate =
+            formatDate(status.lastUpdated);
+
+        if (homeDate) {
+            homeDate.textContent =
+                status.lastUpdated
+                    ? "Last update: " + formattedDate
+                    : "Last update: —";
         }
+
+        if (patchDate) {
+            patchDate.textContent =
+                status.lastUpdated
+                    ? formattedDate
+                    : "—";
+        }
+
+        if (footerText) {
+            switch (
+                String(status.state || "")
+                    .toLowerCase()
+            ) {
+                case "ready":
+                case "online":
+                case "fresh":
+                    footerText.textContent =
+                        "Station Data Ready";
+                    break;
+
+                case "loading":
+                    footerText.textContent =
+                        "Loading Station Data";
+                    break;
+
+                case "stale":
+                case "partial":
+                case "warning":
+                    footerText.textContent =
+                        "Station Data Needs Review";
+                    break;
+
+                case "error":
+                case "offline":
+                    footerText.textContent =
+                        "Station Data Unavailable";
+                    break;
+
+                default:
+                    footerText.textContent =
+                        "Data Source Not Configured";
+            }
+        }
+
+        emit("data-status", status);
     }
 
-    function hideLoader() {
-        if (!DOM.appLoader) {
-            return;
-        }
 
-        setLoaderProgress(100, "Station ready.");
-
-        window.setTimeout(function () {
-            DOM.appLoader.classList.add("is-hidden");
-            DOM.appLoader.setAttribute("aria-hidden", "true");
-
-            window.setTimeout(function () {
-                DOM.appLoader.classList.add("hidden");
-            }, 500);
-        }, state.reducedMotion ? 0 : 180);
-    }
-
-    function showLoader(message) {
-        if (!DOM.appLoader) {
-            return;
-        }
-
-        DOM.appLoader.classList.remove("hidden");
-        DOM.appLoader.classList.remove("is-hidden");
-        DOM.appLoader.setAttribute("aria-hidden", "false");
-
-        setLoaderProgress(0, message || "Loading station...");
-    }
+    APP.updateDataStatusUI = updateDataStatusUI;
 
 
-    /* =========================================================
-       TOAST SYSTEM
-       ========================================================= */
+    /* =======================================================
+       DATA COUNTS
+       ======================================================= */
 
-    function toast(message, type, duration) {
-        if (!DOM.toastContainer) {
-            return;
-        }
-
-        const text = String(message ?? "").trim();
-
-        if (!text) {
-            return;
-        }
-
-        const allowedTypes = new Set([
-            "info",
-            "success",
-            "warning",
-            "error"
-        ]);
-
-        const toastType = allowedTypes.has(type)
-            ? type
-            : "info";
-
-        const item = document.createElement("div");
-
-        item.className = "toast toast-" + toastType;
-
-        item.setAttribute("role", "status");
-
-        item.innerHTML =
-            '<div class="toast-content">' +
-                '<span class="toast-indicator" aria-hidden="true"></span>' +
-                '<span class="toast-message"></span>' +
-            '</div>' +
-            '<button class="toast-close" type="button" aria-label="Dismiss">' +
-                "×" +
-            "</button>";
-
-        const messageElement =
-            item.querySelector(".toast-message");
-
-        if (messageElement) {
-            messageElement.textContent = text;
-        }
-
-        const closeButton =
-            item.querySelector(".toast-close");
-
-        function removeToast() {
-            if (!item.isConnected) {
-                return;
+    function getCollectionCount(name) {
+        try {
+            if (
+                DATA &&
+                typeof DATA.getCollectionCount === "function"
+            ) {
+                return DATA.getCollectionCount(name);
             }
 
-            item.classList.add("is-removing");
+            if (
+                DATA &&
+                typeof DATA.getCollection === "function"
+            ) {
+                const collection =
+                    DATA.getCollection(name);
 
-            window.setTimeout(function () {
-                if (item.isConnected) {
-                    item.remove();
-                }
-            }, state.reducedMotion ? 0 : 180);
-        }
+                return Array.isArray(collection)
+                    ? collection.length
+                    : 0;
+            }
 
-        if (closeButton) {
-            closeButton.addEventListener(
-                "click",
-                removeToast
+            if (
+                DATA &&
+                Array.isArray(DATA[name])
+            ) {
+                return DATA[name].length;
+            }
+        } catch (error) {
+            console.warn(
+                "[HoKStation] Count error:",
+                error
             );
         }
 
-        DOM.toastContainer.appendChild(item);
-
-        const timeout =
-            Number.isFinite(Number(duration))
-                ? Number(duration)
-                : 4500;
-
-        if (timeout > 0) {
-            window.setTimeout(removeToast, timeout);
-        }
-
-        return item;
-    }
-
-    APP.toast = toast;
-    APP.notify = toast;
-
-
-    /* =========================================================
-       GLOBAL ERROR SYSTEM
-       ========================================================= */
-
-    function showGlobalError(message) {
-        state.lastError = message;
-
-        if (DOM.globalErrorMessage) {
-            DOM.globalErrorMessage.textContent =
-                String(message || "Some live features may be unavailable.");
-        }
-
-        if (DOM.globalError) {
-            DOM.globalError.classList.remove("hidden");
-            DOM.globalError.setAttribute("aria-hidden", "false");
-        }
-    }
-
-    function hideGlobalError() {
-        if (!DOM.globalError) {
-            return;
-        }
-
-        DOM.globalError.classList.add("hidden");
-        DOM.globalError.setAttribute("aria-hidden", "true");
+        return 0;
     }
 
 
-    /* =========================================================
+    function updateHomeCounts() {
+        const heroCount =
+            byId("home-hero-count");
+
+        const equipmentCount =
+            byId("home-equipment-count");
+
+        const buildCount =
+            byId("home-build-count");
+
+        if (heroCount) {
+            heroCount.textContent =
+                String(getCollectionCount("heroes"));
+        }
+
+        if (equipmentCount) {
+            equipmentCount.textContent =
+                String(getCollectionCount("equipment"));
+        }
+
+        if (buildCount) {
+            buildCount.textContent =
+                String(getCollectionCount("builds"));
+        }
+    }
+
+
+    APP.updateHomeCounts = updateHomeCounts;
+
+
+    /* =======================================================
        ROUTING HELPERS
-       ========================================================= */
+       ======================================================= */
 
-    function getRouteFromHash(hash) {
-        const raw = String(
-            hash !== undefined
-                ? hash
-                : window.location.hash
-        );
-
-        const cleaned = raw
-            .replace(/^#/, "")
-            .trim();
-
-        if (!cleaned) {
-            return DEFAULT_ROUTE;
+    function normalizeRoute(route) {
+        if (!route) {
+            return "home";
         }
 
-        const route = cleaned.split("?")[0];
+        let value = String(route).trim();
 
-        if (ROUTES.has(route)) {
-            return route;
+        if (value.charAt(0) === "#") {
+            value = value.slice(1);
         }
 
-        return DEFAULT_ROUTE;
-    }
-
-    function getQueryFromHash(hash) {
-        const raw = String(
-            hash !== undefined
-                ? hash
-                : window.location.hash
-        );
-
-        const queryIndex = raw.indexOf("?");
-
-        if (queryIndex === -1) {
-            return new URLSearchParams();
+        if (value.charAt(0) === "/") {
+            value = value.slice(1);
         }
 
-        return new URLSearchParams(
-            raw.slice(queryIndex + 1)
-        );
-    }
+        if (value.indexOf("?") !== -1) {
+            value = value.split("?")[0];
+        }
 
-    function getRouteTarget(route) {
-        const normalized = getRouteFromHash("#" + route);
+        if (value.indexOf("/") !== -1) {
+            value = value.split("/")[0];
+        }
 
-        return document.querySelector(
-            '[data-page="' +
-            CSS.escape(normalized) +
-            '"]'
-        );
+        return VALID_ROUTES.has(value)
+            ? value
+            : "home";
     }
 
 
-    /* =========================================================
-       ROUTE VISIBILITY
-       ========================================================= */
+    function getHashRoute() {
+        const hash =
+            window.location.hash || "#home";
 
-    function updatePageVisibility(route) {
-        DOM.pageSections.forEach(function (section) {
-            const isActive =
-                section.getAttribute("data-page") === route;
+        return normalizeRoute(hash);
+    }
 
-            section.classList.toggle(
+
+    function getCurrentRoute() {
+        return state.currentRoute;
+    }
+
+
+    APP.getCurrentRoute = getCurrentRoute;
+
+
+    function updateActiveNavigation(route) {
+        $$("[data-route]").forEach(function (element) {
+            const target =
+                normalizeRoute(
+                    element.getAttribute("data-route")
+                );
+
+            element.classList.toggle(
                 "is-active",
-                isActive
+                target === route
             );
-
-            section.classList.toggle(
-                "hidden",
-                !isActive
-            );
-
-            if (isActive) {
-                section.setAttribute(
-                    "aria-hidden",
-                    "false"
-                );
-            } else {
-                section.setAttribute(
-                    "aria-hidden",
-                    "true"
-                );
-            }
         });
+
+        $$(".nav-link[data-route]").forEach(
+            function (element) {
+                const active =
+                    normalizeRoute(
+                        element.getAttribute("data-route")
+                    ) === route;
+
+                if (active) {
+                    element.setAttribute(
+                        "aria-current",
+                        "page"
+                    );
+                } else {
+                    element.removeAttribute(
+                        "aria-current"
+                    );
+                }
+            }
+        );
+
+        $$(".mobile-nav-link[data-route]").forEach(
+            function (element) {
+                const active =
+                    normalizeRoute(
+                        element.getAttribute("data-route")
+                    ) === route;
+
+                if (active) {
+                    element.setAttribute(
+                        "aria-current",
+                        "page"
+                    );
+                } else {
+                    element.removeAttribute(
+                        "aria-current"
+                    );
+                }
+            }
+        );
     }
 
 
-    /* =========================================================
-       NAVIGATION ACTIVE STATES
-       ========================================================= */
+    function updateVisiblePage(route) {
+        const sections =
+            $$(".page-section[data-page]");
 
-    function updateNavigation(route) {
-        DOM.navLinks.forEach(function (link) {
-            const linkRoute =
-                link.getAttribute("data-route");
+        sections.forEach(function (section) {
+            const sectionRoute =
+                section.getAttribute("data-page");
 
             const active =
-                linkRoute === route;
+                sectionRoute === route;
 
-            link.classList.toggle(
+            section.classList.toggle(
                 "is-active",
                 active
             );
 
+            section.hidden = !active;
+
             if (active) {
-                link.setAttribute(
+                section.setAttribute(
                     "aria-current",
                     "page"
                 );
             } else {
-                link.removeAttribute(
+                section.removeAttribute(
                     "aria-current"
                 );
-            }
-        });
-
-        DOM.routeLinks.forEach(function (link) {
-            const linkRoute =
-                link.getAttribute("data-route");
-
-            if (linkRoute === route) {
-                link.classList.add("is-current");
-            } else {
-                link.classList.remove("is-current");
             }
         });
     }
 
 
-    /* =========================================================
-       SCROLL MANAGEMENT
-       ========================================================= */
+    function scrollMainToTop() {
+        const main = byId("main-content");
 
-    function scrollToMain(options) {
-        const behavior =
-            state.reducedMotion
-                ? "auto"
-                : (options && options.behavior) || "smooth";
-
-        if (DOM.mainContent) {
-            DOM.mainContent.scrollTo({
+        if (main) {
+            main.scrollTo({
                 top: 0,
-                behavior
+                behavior: state.reducedMotion
+                    ? "auto"
+                    : "smooth"
             });
         }
 
         window.scrollTo({
             top: 0,
-            behavior
+            behavior: state.reducedMotion
+                ? "auto"
+                : "smooth"
         });
     }
 
 
-    /* =========================================================
-       ROUTE HANDLER
-       ========================================================= */
+    function notifyRouteChange(route, previousRoute) {
+        const detail = {
+            route: route,
+            previousRoute: previousRoute
+        };
+
+        state.routeListeners.forEach(function (listener) {
+            try {
+                listener(detail);
+            } catch (error) {
+                console.error(
+                    "[HoKStation] Route listener error:",
+                    error
+                );
+            }
+        });
+
+        emit("route", detail);
+    }
+
 
     function navigate(route, options) {
-        const requestedRoute =
-            String(route || DEFAULT_ROUTE)
-                .replace(/^#/, "")
-                .split("?")[0];
-
-        const targetRoute =
-            ROUTES.has(requestedRoute)
-                ? requestedRoute
-                : DEFAULT_ROUTE;
-
         const opts = options || {};
+        const normalized = normalizeRoute(route);
 
-        if (
-            targetRoute !== requestedRoute &&
-            !opts.silent
-        ) {
-            window.location.hash = targetRoute;
-            return;
+        const previous =
+            state.currentRoute;
+
+        state.previousRoute = previous;
+        state.currentRoute = normalized;
+
+        if (opts.updateHash !== false) {
+            const newHash = "#" + normalized;
+
+            if (window.location.hash !== newHash) {
+                if (opts.replace) {
+                    history.replaceState(
+                        null,
+                        "",
+                        newHash
+                    );
+                } else {
+                    history.pushState(
+                        null,
+                        "",
+                        newHash
+                    );
+                }
+            }
         }
 
-        state.previousRoute = state.currentRoute;
-        state.currentRoute = targetRoute;
+        updateVisiblePage(normalized);
+        updateActiveNavigation(normalized);
 
-        updatePageVisibility(targetRoute);
-        updateNavigation(targetRoute);
+        if (normalized === "search-results") {
+            renderSearchResultsPage();
+        }
 
         closeMobileNavigation();
         closeAccountPanel();
 
-        if (!opts.keepSearchOpen) {
-            closeSearchPanel();
+        if (!opts.preserveScroll) {
+            scrollMainToTop();
         }
 
-        if (!opts.skipScroll) {
-            scrollToMain({
-                behavior: opts.behavior
-            });
-        }
-
-        dispatchAppEvent(
-            "routechange",
-            {
-                route: targetRoute,
-                previousRoute: state.previousRoute
-            }
+        notifyRouteChange(
+            normalized,
+            previous
         );
 
-        handleRouteSpecificBehavior(
-            targetRoute,
-            getQueryFromHash()
-        );
-
-        return targetRoute;
+        return normalized;
     }
+
 
     APP.navigate = navigate;
 
 
-    /* =========================================================
-       ROUTE-SPECIFIC BEHAVIOR
-       ========================================================= */
-
-    function handleRouteSpecificBehavior(route, params) {
-        const features = getFeaturesAPI();
-
-        if (features) {
-            if (
-                route === "heroes" &&
-                typeof features.renderHeroes === "function"
-            ) {
-                safeCall(function () {
-                    features.renderHeroes();
-                });
-            }
-
-            if (
-                route === "equipment" &&
-                typeof features.renderEquipment === "function"
-            ) {
-                safeCall(function () {
-                    features.renderEquipment();
-                });
-            }
-
-            if (
-                route === "builds" &&
-                typeof features.renderBuilds === "function"
-            ) {
-                safeCall(function () {
-                    features.renderBuilds();
-                });
-            }
-
-            if (
-                route === "build-lab" &&
-                typeof features.renderBuildLab === "function"
-            ) {
-                safeCall(function () {
-                    features.renderBuildLab();
-                });
-            }
-
-            if (
-                route === "compare" &&
-                typeof features.renderCompare === "function"
-            ) {
-                safeCall(function () {
-                    features.renderCompare();
-                });
-            }
-
-            if (
-                route === "patches" &&
-                typeof features.renderPatches === "function"
-            ) {
-                safeCall(function () {
-                    features.renderPatches();
-                });
-            }
-
-            if (
-                route === "data-history" &&
-                typeof features.renderHistory === "function"
-            ) {
-                safeCall(function () {
-                    features.renderHistory();
-                });
-            }
-
-            if (
-                route === "meta" &&
-                typeof features.renderMeta === "function"
-            ) {
-                safeCall(function () {
-                    features.renderMeta();
-                });
-            }
-
-            if (
-                route === "favorites" &&
-                typeof features.renderFavorites === "function"
-            ) {
-                safeCall(function () {
-                    features.renderFavorites();
-                });
-            }
-
-            if (
-                route === "community" &&
-                typeof features.renderCommunity === "function"
-            ) {
-                safeCall(function () {
-                    features.renderCommunity();
-                });
-            }
-
-            if (
-                route === "notices" &&
-                typeof features.renderNotices === "function"
-            ) {
-                safeCall(function () {
-                    features.renderNotices();
-                });
-            }
-        }
-
-        if (
-            route === "search-results"
-        ) {
-            renderSearchResultsPage(
-                params && params.get("q")
-                    ? params.get("q")
-                    : state.search.query,
-                params && params.get("type")
-                    ? params.get("type")
-                    : state.search.type
-            );
-        }
-
-        if (
-            route === "hero-detail" &&
-            features &&
-            typeof features.openHeroDetailFromRoute === "function"
-        ) {
-            safeCall(function () {
-                features.openHeroDetailFromRoute(params);
-            });
-        }
-
-        if (
-            route === "question-detail" &&
-            features &&
-            typeof features.openQuestionFromRoute === "function"
-        ) {
-            safeCall(function () {
-                features.openQuestionFromRoute(params);
-            });
-        }
+    function setRoute(route, options) {
+        return navigate(route, options);
     }
 
 
-    /* =========================================================
-       HASH CHANGE
-       ========================================================= */
+    APP.setRoute = setRoute;
+
+
+    function onRouteChange(listener) {
+        if (typeof listener !== "function") {
+            return function () {};
+        }
+
+        state.routeListeners.push(listener);
+
+        return function unsubscribe() {
+            const index =
+                state.routeListeners.indexOf(listener);
+
+            if (index !== -1) {
+                state.routeListeners.splice(
+                    index,
+                    1
+                );
+            }
+        };
+    }
+
+
+    APP.onRouteChange = onRouteChange;
+
 
     function handleHashChange() {
-        const route = getRouteFromHash();
+        const route = getHashRoute();
 
         navigate(route, {
-            silent: true
+            updateHash: false,
+            preserveScroll: false
         });
     }
 
 
-    /* =========================================================
-       ROUTE LINK HANDLING
-       ========================================================= */
+    /* =======================================================
+       SEARCH
+       ======================================================= */
 
-    function handleRouteLinkClick(event) {
-        const link = event.currentTarget;
+    function setSearchFilter(type) {
+        const allowed = new Set([
+            "all",
+            "heroes",
+            "equipment",
+            "builds",
+            "patches"
+        ]);
 
-        if (!link) {
-            return;
-        }
+        const value =
+            allowed.has(type)
+                ? type
+                : "all";
 
-        const href = link.getAttribute("href");
-        const route = link.getAttribute("data-route");
+        state.search.type = value;
 
-        if (!route) {
-            return;
-        }
-
-        if (
-            event.defaultPrevented ||
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.altKey
-        ) {
-            return;
-        }
-
-        if (
-            href &&
-            href.startsWith("#")
-        ) {
-            event.preventDefault();
-
-            if (
-                window.location.hash.replace("#", "") === route
-            ) {
-                navigate(route, {
-                    silent: true
-                });
-            } else {
-                window.location.hash = route;
+        $$("[data-search-type]").forEach(
+            function (button) {
+                button.classList.toggle(
+                    "is-active",
+                    button.getAttribute(
+                        "data-search-type"
+                    ) === value
+                );
             }
+        );
+
+        renderGlobalSearchResults();
+
+        emit("search-filter", {
+            type: value
+        });
+    }
+
+
+    function getSearchTypeLabel(type) {
+        switch (type) {
+            case "heroes":
+                return "Heroes";
+
+            case "equipment":
+                return "Equipment";
+
+            case "builds":
+                return "Builds";
+
+            case "patches":
+                return "Updates";
+
+            default:
+                return "All";
         }
     }
 
 
-    /* =========================================================
-       MOBILE NAVIGATION
-       ========================================================= */
+    function normalizeSearchResult(item, fallbackType) {
+        if (!item) {
+            return null;
+        }
 
-    function openMobileNavigation() {
-        if (!DOM.mobileNavigation) {
+        if (typeof item === "string") {
+            return {
+                id: item,
+                title: item,
+                description: "",
+                type: fallbackType || "all",
+                route: null
+            };
+        }
+
+        const type =
+            item.type ||
+            item.category ||
+            item.kind ||
+            fallbackType ||
+            "all";
+
+        return {
+            id:
+                item.id ||
+                item.slug ||
+                item.key ||
+                item.value ||
+                "",
+            title:
+                item.name ||
+                item.title ||
+                item.displayName ||
+                item.display_name ||
+                "Untitled",
+            description:
+                item.description ||
+                item.subtitle ||
+                item.summary ||
+                "",
+            type: type,
+            route:
+                item.route ||
+                item.href ||
+                null,
+            slug:
+                item.slug || null,
+            raw: item
+        };
+    }
+
+
+    function searchData(query, type) {
+        if (
+            !query ||
+            String(query).trim().length === 0
+        ) {
+            return [];
+        }
+
+        try {
+            if (
+                DATA &&
+                typeof DATA.search === "function"
+            ) {
+                const result =
+                    DATA.search(
+                        query,
+                        type
+                    );
+
+                if (Array.isArray(result)) {
+                    return result
+                        .map(function (item) {
+                            return normalizeSearchResult(
+                                item,
+                                type
+                            );
+                        })
+                        .filter(Boolean);
+                }
+            }
+        } catch (error) {
+            console.error(
+                "[HoKStation] Search error:",
+                error
+            );
+        }
+
+        return [];
+    }
+
+
+    function getResultRoute(result) {
+        if (!result) {
+            return "search-results";
+        }
+
+        if (result.route) {
+            return normalizeRoute(result.route);
+        }
+
+        const type =
+            String(result.type || "")
+                .toLowerCase();
+
+        const id =
+            result.id ||
+            result.slug;
+
+        if (!id) {
+            return "search-results";
+        }
+
+        /*
+         * Domain-specific rendering/routing is ultimately owned
+         * by features.js. app.js only supplies a safe destination.
+         */
+
+        switch (type) {
+            case "hero":
+            case "heroes":
+                return "hero-detail";
+
+            case "equipment":
+            case "item":
+                return "equipment";
+
+            case "build":
+            case "builds":
+                return "build-lab";
+
+            case "patch":
+            case "patches":
+            case "update":
+                return "patches";
+
+            default:
+                return "search-results";
+        }
+    }
+
+
+    function createSearchResultElement(result) {
+        const wrapper =
+            document.createElement("button");
+
+        wrapper.type = "button";
+        wrapper.className = "search-result-item";
+
+        const title =
+            document.createElement("strong");
+
+        title.className = "search-result-title";
+        title.textContent =
+            safeText(
+                result.title,
+                "Untitled"
+            );
+
+        const meta =
+            document.createElement("span");
+
+        meta.className = "search-result-type";
+        meta.textContent =
+            getSearchTypeLabel(
+                result.type
+            );
+
+        const description =
+            document.createElement("span");
+
+        description.className =
+            "search-result-description";
+
+        description.textContent =
+            safeText(
+                result.description,
+                ""
+            );
+
+        wrapper.appendChild(title);
+        wrapper.appendChild(meta);
+
+        if (result.description) {
+            wrapper.appendChild(description);
+        }
+
+        wrapper.addEventListener(
+            "click",
+            function () {
+                emit("search-result-click", {
+                    result: result
+                });
+
+                const route =
+                    getResultRoute(result);
+
+                navigate(route);
+
+                /*
+                 * Let features.js inspect the selected
+                 * result and render the correct detail.
+                 */
+                emit("search-select", {
+                    result: result,
+                    route: route
+                });
+
+                closeSearch();
+            }
+        );
+
+        return wrapper;
+    }
+
+
+    function renderGlobalSearchResults() {
+        const container =
+            byId("global-search-results");
+
+        if (!container) {
             return;
         }
 
-        state.mobileNavigationOpen = true;
+        const query =
+            state.search.query.trim();
 
-        DOM.mobileNavigation.classList.add("is-open");
-        DOM.mobileNavigation.setAttribute(
-            "aria-hidden",
-            "false"
-        );
+        if (!query) {
+            container.innerHTML = "";
 
-        if (DOM.mobileMenuTrigger) {
-            DOM.mobileMenuTrigger.setAttribute(
+            const empty =
+                document.createElement("div");
+
+            empty.className =
+                "empty-state compact";
+
+            const icon =
+                document.createElement("span");
+
+            icon.className = "empty-icon";
+            icon.textContent = "⌕";
+
+            const heading =
+                document.createElement("h3");
+
+            heading.textContent =
+                "Start searching";
+
+            const paragraph =
+                document.createElement("p");
+
+            paragraph.textContent =
+                "Search across the HoKStation database.";
+
+            empty.appendChild(icon);
+            empty.appendChild(heading);
+            empty.appendChild(paragraph);
+
+            container.appendChild(empty);
+
+            return;
+        }
+
+        const results =
+            searchData(
+                query,
+                state.search.type
+            );
+
+        container.innerHTML = "";
+
+        if (results.length === 0) {
+            const empty =
+                document.createElement("div");
+
+            empty.className =
+                "empty-state compact";
+
+            const icon =
+                document.createElement("span");
+
+            icon.className = "empty-icon";
+            icon.textContent = "◇";
+
+            const heading =
+                document.createElement("h3");
+
+            heading.textContent =
+                "No results found";
+
+            const paragraph =
+                document.createElement("p");
+
+            paragraph.textContent =
+                "Try another search term or filter.";
+
+            empty.appendChild(icon);
+            empty.appendChild(heading);
+            empty.appendChild(paragraph);
+
+            container.appendChild(empty);
+
+            return;
+        }
+
+        results
+            .slice(0, 20)
+            .forEach(function (result) {
+                container.appendChild(
+                    createSearchResultElement(result)
+                );
+            });
+    }
+
+
+    function renderSearchResultsPage() {
+        const container =
+            byId("search-results-page-content");
+
+        const summary =
+            byId("search-results-summary");
+
+        if (!container) {
+            return;
+        }
+
+        const query =
+            state.search.query.trim();
+
+        const results =
+            searchData(
+                query,
+                state.search.type
+            );
+
+        if (summary) {
+            if (!query) {
+                summary.textContent =
+                    "Enter a search term to explore the Station.";
+            } else {
+                summary.textContent =
+                    results.length +
+                    " result" +
+                    (results.length === 1 ? "" : "s") +
+                    " for “" +
+                    query +
+                    "”";
+            }
+        }
+
+        container.innerHTML = "";
+
+        if (!query) {
+            const empty =
+                document.createElement("div");
+
+            empty.className = "empty-state";
+
+            const icon =
+                document.createElement("span");
+
+            icon.className = "empty-icon";
+            icon.textContent = "⌕";
+
+            const heading =
+                document.createElement("h3");
+
+            heading.textContent =
+                "Search the Station";
+
+            const paragraph =
+                document.createElement("p");
+
+            paragraph.textContent =
+                "Use the global search to find heroes, equipment, builds and updates.";
+
+            empty.appendChild(icon);
+            empty.appendChild(heading);
+            empty.appendChild(paragraph);
+
+            container.appendChild(empty);
+
+            return;
+        }
+
+        if (results.length === 0) {
+            const empty =
+                document.createElement("div");
+
+            empty.className = "empty-state";
+
+            const heading =
+                document.createElement("h3");
+
+            heading.textContent =
+                "No results found";
+
+            const paragraph =
+                document.createElement("p");
+
+            paragraph.textContent =
+                "Try a different term or search category.";
+
+            empty.appendChild(heading);
+            empty.appendChild(paragraph);
+
+            container.appendChild(empty);
+
+            return;
+        }
+
+        results.forEach(function (result) {
+            container.appendChild(
+                createSearchResultElement(result)
+            );
+        });
+    }
+
+
+    function performSearch(value) {
+        state.search.query =
+            safeText(value, "").trim();
+
+        renderGlobalSearchResults();
+
+        emit("search", {
+            query: state.search.query,
+            type: state.search.type
+        });
+    }
+
+
+    function openSearch(options) {
+        const opts = options || {};
+        const panel =
+            byId("global-search-panel");
+
+        if (!panel) {
+            return;
+        }
+
+        state.search.open = true;
+
+        if (typeof opts.type === "string") {
+            setSearchFilter(opts.type);
+        }
+
+        if (typeof opts.query === "string") {
+            state.search.query = opts.query;
+        }
+
+        panel.classList.add("is-open");
+        panel.setAttribute("aria-hidden", "false");
+
+        const trigger =
+            byId("search-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
                 "aria-expanded",
                 "true"
             );
         }
 
-        document.body.classList.add(
-            "mobile-navigation-open"
-        );
+        const input =
+            byId("global-search-input");
+
+        if (input) {
+            input.value =
+                state.search.query;
+
+            window.setTimeout(function () {
+                input.focus();
+
+                if (input.value) {
+                    input.select();
+                }
+            }, state.reducedMotion ? 0 : 50);
+        }
+
+        renderGlobalSearchResults();
+
+        emit("search-open");
     }
 
-    function closeMobileNavigation() {
-        if (!DOM.mobileNavigation) {
+
+    function closeSearch() {
+        const panel =
+            byId("global-search-panel");
+
+        if (!panel) {
             return;
         }
 
-        state.mobileNavigationOpen = false;
+        state.search.open = false;
 
-        DOM.mobileNavigation.classList.remove("is-open");
-        DOM.mobileNavigation.setAttribute(
-            "aria-hidden",
-            "true"
-        );
+        panel.classList.remove("is-open");
+        panel.setAttribute("aria-hidden", "true");
 
-        if (DOM.mobileMenuTrigger) {
-            DOM.mobileMenuTrigger.setAttribute(
+        const trigger =
+            byId("search-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
                 "aria-expanded",
                 "false"
             );
         }
 
-        document.body.classList.remove(
-            "mobile-navigation-open"
-        );
+        emit("search-close");
     }
+
+
+    APP.openSearch = openSearch;
+    APP.closeSearch = closeSearch;
+    APP.search = performSearch;
+    APP.setSearchFilter = setSearchFilter;
+
+
+    /* =======================================================
+       MOBILE NAVIGATION
+       ======================================================= */
+
+    function openMobileNavigation() {
+        const navigation =
+            byId("mobile-navigation");
+
+        if (!navigation) {
+            return;
+        }
+
+        state.mobileNavigationOpen = true;
+
+        navigation.classList.add("is-open");
+        navigation.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        const trigger =
+            byId("mobile-menu-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
+                "aria-expanded",
+                "true"
+            );
+        }
+
+        emit("mobile-nav-open");
+    }
+
+
+    function closeMobileNavigation() {
+        const navigation =
+            byId("mobile-navigation");
+
+        if (!navigation) {
+            return;
+        }
+
+        state.mobileNavigationOpen = false;
+
+        navigation.classList.remove("is-open");
+        navigation.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+        const trigger =
+            byId("mobile-menu-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
+                "aria-expanded",
+                "false"
+            );
+        }
+
+        emit("mobile-nav-close");
+    }
+
 
     function toggleMobileNavigation() {
         if (state.mobileNavigationOpen) {
@@ -1161,611 +1683,440 @@
     }
 
 
-    /* =========================================================
+    APP.openMobileNavigation =
+        openMobileNavigation;
+
+    APP.closeMobileNavigation =
+        closeMobileNavigation;
+
+    APP.toggleMobileNavigation =
+        toggleMobileNavigation;
+
+
+    /* =======================================================
        ACCOUNT PANEL
-       ========================================================= */
+       ======================================================= */
 
     function openAccountPanel() {
-        if (!DOM.accountPanel) {
+        const panel =
+            byId("account-panel");
+
+        if (!panel) {
             return;
         }
 
         state.accountPanelOpen = true;
 
-        DOM.accountPanel.classList.add("is-open");
-        DOM.accountPanel.setAttribute(
+        panel.classList.add("is-open");
+        panel.setAttribute(
             "aria-hidden",
             "false"
         );
 
-        if (DOM.accountTrigger) {
-            DOM.accountTrigger.setAttribute(
+        const trigger =
+            byId("account-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
                 "aria-expanded",
                 "true"
             );
         }
+
+        emit("account-open");
     }
 
+
     function closeAccountPanel() {
-        if (!DOM.accountPanel) {
+        const panel =
+            byId("account-panel");
+
+        if (!panel) {
             return;
         }
 
         state.accountPanelOpen = false;
 
-        DOM.accountPanel.classList.remove("is-open");
-        DOM.accountPanel.setAttribute(
+        panel.classList.remove("is-open");
+        panel.setAttribute(
             "aria-hidden",
             "true"
         );
 
-        if (DOM.accountTrigger) {
-            DOM.accountTrigger.setAttribute(
+        const trigger =
+            byId("account-trigger");
+
+        if (trigger) {
+            trigger.setAttribute(
                 "aria-expanded",
                 "false"
             );
         }
+
+        emit("account-close");
     }
+
 
     function toggleAccountPanel() {
         if (state.accountPanelOpen) {
             closeAccountPanel();
         } else {
-            closeMobileNavigation();
             openAccountPanel();
         }
     }
 
 
-    /* =========================================================
-       SEARCH PANEL
-       ========================================================= */
+    APP.openAccountPanel =
+        openAccountPanel;
 
-    function openSearchPanel(initialQuery) {
-        if (!DOM.globalSearchPanel) {
+    APP.closeAccountPanel =
+        closeAccountPanel;
+
+    APP.toggleAccountPanel =
+        toggleAccountPanel;
+
+
+    /* =======================================================
+       AUTH MODAL UI
+       ======================================================= */
+
+    function openAuthModal(tab) {
+        const modal =
+            byId("auth-modal");
+
+        if (!modal) {
             return;
         }
 
-        closeMobileNavigation();
-        closeAccountPanel();
-
-        state.search.isOpen = true;
-
-        DOM.globalSearchPanel.classList.add(
-            "is-open"
-        );
-
-        DOM.globalSearchPanel.setAttribute(
+        modal.classList.add("is-open");
+        modal.setAttribute(
             "aria-hidden",
             "false"
         );
 
-        if (initialQuery !== undefined) {
-            state.search.query = String(initialQuery);
-        }
-
-        if (DOM.globalSearchInput) {
-            DOM.globalSearchInput.value =
-                state.search.query;
-
-            window.setTimeout(function () {
-                DOM.globalSearchInput.focus();
-
-                const length =
-                    DOM.globalSearchInput.value.length;
-
-                try {
-                    DOM.globalSearchInput.setSelectionRange(
-                        length,
-                        length
-                    );
-                } catch (error) {
-                    /* Ignore unsupported selection behavior. */
-                }
-            }, 30);
-        }
-
-        renderSearchResults(
-            state.search.query,
-            state.search.type
+        setAuthTab(
+            tab || "login"
         );
+
+        emit("auth-open", {
+            tab: tab || "login"
+        });
     }
 
-    function closeSearchPanel() {
-        if (!DOM.globalSearchPanel) {
+
+    function closeAuthModal() {
+        const modal =
+            byId("auth-modal");
+
+        if (!modal) {
             return;
         }
 
-        state.search.isOpen = false;
-
-        DOM.globalSearchPanel.classList.remove(
-            "is-open"
-        );
-
-        DOM.globalSearchPanel.setAttribute(
+        modal.classList.remove("is-open");
+        modal.setAttribute(
             "aria-hidden",
             "true"
         );
-    }
 
-    function toggleSearchPanel() {
-        if (state.search.isOpen) {
-            closeSearchPanel();
-        } else {
-            openSearchPanel();
-        }
+        emit("auth-close");
     }
 
 
-    /* =========================================================
-       SEARCH TYPE
-       ========================================================= */
-
-    function setSearchType(type) {
+    function setAuthTab(tab) {
         const allowed = new Set([
-            "all",
-            "heroes",
-            "equipment",
-            "builds",
-            "patches"
+            "login",
+            "register",
+            "recovery"
         ]);
 
-        state.search.type =
-            allowed.has(type)
-                ? type
-                : "all";
+        const selected =
+            allowed.has(tab)
+                ? tab
+                : "login";
 
-        DOM.searchTypeButtons.forEach(function (button) {
-            const active =
-                button.getAttribute("data-search-type") ===
-                state.search.type;
+        $$("[data-auth-tab]").forEach(
+            function (button) {
+                const active =
+                    button.getAttribute(
+                        "data-auth-tab"
+                    ) === selected;
 
-            button.classList.toggle(
-                "is-active",
-                active
-            );
+                button.classList.toggle(
+                    "is-active",
+                    active
+                );
+            }
+        );
 
-            button.setAttribute(
-                "aria-pressed",
-                active ? "true" : "false"
-            );
+        $$("[data-auth-form]").forEach(
+            function (form) {
+                const active =
+                    form.getAttribute(
+                        "data-auth-form"
+                    ) === selected;
+
+                form.classList.toggle(
+                    "hidden",
+                    !active
+                );
+            }
+        );
+
+        const title =
+            byId("auth-modal-title");
+
+        if (title) {
+            if (selected === "register") {
+                title.textContent =
+                    "Create your HoKStation account";
+            } else if (selected === "recovery") {
+                title.textContent =
+                    "Reset your password";
+            } else {
+                title.textContent =
+                    "Log in to HoKStation";
+            }
+        }
+
+        emit("auth-tab", {
+            tab: selected
+        });
+    }
+
+
+    APP.openAuthModal = openAuthModal;
+    APP.closeAuthModal = closeAuthModal;
+    APP.setAuthTab = setAuthTab;
+
+
+    /* =======================================================
+       GENERIC MODAL UTILITIES
+       ======================================================= */
+
+    function getModalElement(idOrElement) {
+        if (isElement(idOrElement)) {
+            return idOrElement;
+        }
+
+        if (typeof idOrElement !== "string") {
+            return null;
+        }
+
+        return byId(idOrElement);
+    }
+
+
+    function openModal(idOrElement) {
+        const modal =
+            getModalElement(idOrElement);
+
+        if (!modal) {
+            return false;
+        }
+
+        modal.classList.add("is-open");
+        modal.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        emit("modal-open", {
+            id: modal.id || null,
+            element: modal
         });
 
-        renderSearchResults(
-            state.search.query,
-            state.search.type
-        );
+        return true;
     }
 
 
-    /* =========================================================
-       DATA SEARCH
-       ========================================================= */
+    function closeModal(idOrElement) {
+        const modal =
+            getModalElement(idOrElement);
 
-    function performSearch(query, type) {
-        const data = getDataAPI();
-
-        if (
-            data &&
-            typeof data.search === "function"
-        ) {
-            try {
-                const result = data.search(
-                    query,
-                    type || "all"
-                );
-
-                if (Array.isArray(result)) {
-                    return result;
-                }
-
-                if (
-                    result &&
-                    Array.isArray(result.results)
-                ) {
-                    return result.results;
-                }
-            } catch (error) {
-                console.error(
-                    "[HoKStation] Data search failed:",
-                    error
-                );
-            }
+        if (!modal) {
+            return false;
         }
 
-        return [];
-    }
-
-
-    /* =========================================================
-       SEARCH RESULT LABELS
-       ========================================================= */
-
-    function getSearchResultTypeLabel(type) {
-        const labels = {
-            hero: "Hero",
-            heroes: "Hero",
-            equipment: "Equipment",
-            item: "Equipment",
-            build: "Build",
-            builds: "Build",
-            patch: "Update",
-            patches: "Update",
-            notice: "Notice",
-            question: "Community"
-        };
-
-        return labels[type] || "Result";
-    }
-
-    function getSearchResultTitle(item) {
-        return (
-            item.name ||
-            item.title ||
-            item.displayName ||
-            item.display_name ||
-            "Untitled"
+        modal.classList.remove("is-open");
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
         );
-    }
 
-    function getSearchResultDescription(item) {
-        return (
-            item.shortDescription ||
-            item.short_description ||
-            item.description ||
-            item.summary ||
-            item.subtitle ||
-            ""
-        );
-    }
+        emit("modal-close", {
+            id: modal.id || null,
+            element: modal
+        });
 
-    function getSearchResultType(item) {
-        return String(
-            item.type ||
-            item.kind ||
-            item.collection ||
-            ""
-        ).toLowerCase();
+        return true;
     }
 
 
-    /* =========================================================
-       SEARCH RESULT HTML
-       ========================================================= */
+    function toggleModal(idOrElement) {
+        const modal =
+            getModalElement(idOrElement);
 
-    function buildSearchResultHTML(item, index) {
+        if (!modal) {
+            return false;
+        }
+
+        if (modal.classList.contains("is-open")) {
+            return closeModal(modal);
+        }
+
+        return openModal(modal);
+    }
+
+
+    APP.openModal = openModal;
+    APP.closeModal = closeModal;
+    APP.toggleModal = toggleModal;
+
+
+    /* =======================================================
+       CONFIRM MODAL
+       ======================================================= */
+
+    function confirm(options) {
+        const opts = options || {};
+
+        const modal =
+            byId("confirm-modal");
+
         const title =
-            getSearchResultTitle(item);
+            byId("confirm-modal-title");
 
-        const description =
-            truncate(
-                getSearchResultDescription(item),
-                180
-            );
+        const message =
+            byId("confirm-modal-message");
 
-        const rawType =
-            getSearchResultType(item);
+        const accept =
+            byId("confirm-accept");
 
-        const typeLabel =
-            getSearchResultTypeLabel(rawType);
+        const cancel =
+            byId("confirm-cancel");
 
-        const id =
-            item.id ||
-            item.slug ||
-            item.key ||
-            "";
-
-        return (
-            '<button ' +
-                'type="button" ' +
-                'class="search-result-item" ' +
-                'data-search-result-index="' +
-                    escapeHTML(index) +
-                '" ' +
-                'data-search-result-type="' +
-                    escapeHTML(rawType) +
-                '" ' +
-                'data-search-result-id="' +
-                    escapeHTML(id) +
-                '">' +
-
-                '<span class="search-result-type">' +
-                    escapeHTML(typeLabel) +
-                "</span>" +
-
-                '<span class="search-result-main">' +
-
-                    '<strong>' +
-                        escapeHTML(title) +
-                    "</strong>" +
-
-                    (
-                        description
-                            ? '<span>' +
-                                escapeHTML(description) +
-                              "</span>"
-                            : ""
-                    ) +
-
-                "</span>" +
-
-                '<span class="search-result-arrow" aria-hidden="true">' +
-                    "›" +
-                "</span>" +
-
-            "</button>"
-        );
-    }
-
-
-    /* =========================================================
-       SEARCH RESULTS RENDER
-       ========================================================= */
-
-    let currentSearchResults = [];
-
-    function renderSearchResults(query, type) {
-        if (!DOM.globalSearchResults) {
-            return;
+        if (!modal || !accept || !cancel) {
+            return Promise.resolve(false);
         }
 
-        const normalizedQuery =
-            String(query || "").trim();
-
-        state.search.query =
-            normalizedQuery;
-
-        if (!normalizedQuery) {
-            DOM.globalSearchResults.innerHTML =
-                '<div class="empty-state compact">' +
-                    '<span class="empty-icon">⌕</span>' +
-                    '<h3>Start searching</h3>' +
-                    '<p>Search across the HoKStation database.</p>' +
-                "</div>";
-
-            currentSearchResults = [];
-            return;
-        }
-
-        const results =
-            performSearch(
-                normalizedQuery,
-                type || state.search.type
-            );
-
-        currentSearchResults = results;
-
-        if (!results.length) {
-            DOM.globalSearchResults.innerHTML =
-                '<div class="empty-state compact">' +
-                    '<span class="empty-icon">◇</span>' +
-                    '<h3>No results found</h3>' +
-                    '<p>Try another search term or category.</p>' +
-                "</div>";
-
-            return;
-        }
-
-        DOM.globalSearchResults.innerHTML =
-            results
-                .slice(0, 20)
-                .map(buildSearchResultHTML)
-                .join("");
-    }
-
-
-    /* =========================================================
-       SEARCH RESULT CLICK
-       ========================================================= */
-
-    function handleSearchResultClick(event) {
-        const target =
-            event.target.closest(
-                ".search-result-item"
-            );
-
-        if (!target) {
-            return;
-        }
-
-        const index =
-            Number(
-                target.getAttribute(
-                    "data-search-result-index"
-                )
-            );
-
-        const item =
-            currentSearchResults[index];
-
-        if (!item) {
-            return;
-        }
-
-        openSearchResult(item);
-    }
-
-
-    /* =========================================================
-       OPEN SEARCH RESULT
-       ========================================================= */
-
-    function openSearchResult(item) {
-        const features = getFeaturesAPI();
-
-        const type =
-            getSearchResultType(item);
-
-        const id =
-            item.id ||
-            item.slug ||
-            item.key;
-
-        closeSearchPanel();
-
-        if (
-            features &&
-            typeof features.openSearchResult === "function"
-        ) {
-            const handled = safeCall(function () {
-                return features.openSearchResult(
-                    item
+        if (title) {
+            title.textContent =
+                safeText(
+                    opts.title,
+                    "Are you sure?"
                 );
-            }, false);
-
-            if (handled) {
-                return;
-            }
         }
 
-        if (
-            type === "hero" ||
-            type === "heroes"
-        ) {
-            if (id) {
-                window.location.hash =
-                    "hero-detail?id=" +
-                    encodeURIComponent(id);
-            } else {
-                window.location.hash = "heroes";
-            }
-
-            return;
+        if (message) {
+            message.textContent =
+                safeText(
+                    opts.message,
+                    "Please confirm this action."
+                );
         }
 
-        if (
-            type === "build" ||
-            type === "builds"
-        ) {
-            window.location.hash =
-                "builds";
-
-            return;
-        }
-
-        if (
-            type === "equipment" ||
-            type === "item"
-        ) {
-            window.location.hash =
-                "equipment";
-
-            return;
-        }
-
-        if (
-            type === "patch" ||
-            type === "patches"
-        ) {
-            window.location.hash =
-                "patches";
-
-            return;
-        }
-
-        window.location.hash =
-            "search-results?q=" +
-            encodeURIComponent(
-                getSearchResultTitle(item)
-            ) +
-            "&type=" +
-            encodeURIComponent(
-                type || "all"
-            );
-    }
-
-
-    /* =========================================================
-       SEARCH RESULTS PAGE
-       ========================================================= */
-
-    function renderSearchResultsPage(query, type) {
-        if (!DOM.searchResultsPageContent) {
-            return;
-        }
-
-        const cleanQuery =
-            String(query || "").trim();
-
-        const cleanType =
-            type || "all";
-
-        if (DOM.searchResultsSummary) {
-            DOM.searchResultsSummary.textContent =
-                cleanQuery
-                    ? 'Results for "' + cleanQuery + '"'
-                    : "Search the HoKStation database.";
-        }
-
-        if (!cleanQuery) {
-            DOM.searchResultsPageContent.innerHTML =
-                '<div class="empty-state">' +
-                    '<span class="empty-icon">⌕</span>' +
-                    '<h3>Start searching</h3>' +
-                    '<p>Enter a search term to find heroes, equipment, builds or updates.</p>' +
-                "</div>";
-
-            return;
-        }
-
-        const results =
-            performSearch(
-                cleanQuery,
-                cleanType
+        accept.textContent =
+            safeText(
+                opts.confirmText,
+                "Confirm"
             );
 
-        currentSearchResults = results;
+        cancel.textContent =
+            safeText(
+                opts.cancelText,
+                "Cancel"
+            );
 
-        if (!results.length) {
-            DOM.searchResultsPageContent.innerHTML =
-                '<div class="empty-state">' +
-                    '<span class="empty-icon">◇</span>' +
-                    '<h3>No results found</h3>' +
-                    '<p>Try another search term or category.</p>' +
-                "</div>";
+        openModal(modal);
 
-            return;
-        }
+        return new Promise(function (resolve) {
+            state.confirmResolver = resolve;
 
-        DOM.searchResultsPageContent.innerHTML =
-            '<div class="search-results-page-list">' +
-                results
-                    .map(buildSearchResultHTML)
-                    .join("") +
-            "</div>";
+            function finish(result) {
+                if (
+                    state.confirmResolver !== resolve
+                ) {
+                    return;
+                }
+
+                state.confirmResolver = null;
+
+                closeModal(modal);
+
+                resolve(result);
+            }
+
+            accept.__hokstationConfirmHandler =
+                function () {
+                    finish(true);
+                };
+
+            cancel.__hokstationConfirmHandler =
+                function () {
+                    finish(false);
+                };
+        });
     }
 
 
-    /* =========================================================
-       SEARCH INPUT
-       ========================================================= */
+    APP.confirm = confirm;
 
-    function handleSearchInput() {
-        if (!DOM.globalSearchInput) {
-            return;
+
+    function resolveConfirm(result) {
+        const accept =
+            byId("confirm-accept");
+
+        const cancel =
+            byId("confirm-cancel");
+
+        if (accept) {
+            accept.__hokstationConfirmHandler = null;
         }
 
-        state.search.query =
-            DOM.globalSearchInput.value;
+        if (cancel) {
+            cancel.__hokstationConfirmHandler = null;
+        }
 
-        renderSearchResults(
-            state.search.query,
-            state.search.type
-        );
+        if (state.confirmResolver) {
+            const resolver =
+                state.confirmResolver;
+
+            state.confirmResolver = null;
+
+            closeModal("confirm-modal");
+
+            resolver(Boolean(result));
+        }
     }
 
 
-    /* =========================================================
+    /* =======================================================
        FEATURED CAROUSEL
-       ========================================================= */
+       ======================================================= */
 
-    function updateFeaturedCarousel(index) {
-        if (!DOM.featuredCards.length) {
-            return;
+    function getFeaturedCards() {
+        const carousel =
+            byId("featured-carousel");
+
+        if (!carousel) {
+            return [];
         }
 
-        const total =
-            DOM.featuredCards.length;
+        return $$(".featured-card", carousel);
+    }
+
+
+    function showFeatured(index, options) {
+        const opts = options || {};
+
+        const cards =
+            state.featured.cards.length
+                ? state.featured.cards
+                : getFeaturedCards();
+
+        if (!cards.length) {
+            return;
+        }
 
         let nextIndex =
             Number(index);
@@ -1775,14 +2126,23 @@
         }
 
         nextIndex =
-            ((nextIndex % total) + total) % total;
+            Math.round(nextIndex);
 
-        state.featuredIndex =
+        if (nextIndex < 0) {
+            nextIndex =
+                cards.length - 1;
+        }
+
+        if (nextIndex >= cards.length) {
+            nextIndex = 0;
+        }
+
+        state.featured.index =
             nextIndex;
 
-        DOM.featuredCards.forEach(function (card, cardIndex) {
+        cards.forEach(function (card, i) {
             const active =
-                cardIndex === nextIndex;
+                i === nextIndex;
 
             card.classList.toggle(
                 "is-active",
@@ -1793,245 +2153,144 @@
                 "aria-hidden",
                 active ? "false" : "true"
             );
-
-            card.setAttribute(
-                "tabindex",
-                active ? "0" : "-1"
-            );
         });
 
-        if (DOM.featuredCarousel) {
-            DOM.featuredCarousel.setAttribute(
-                "data-active-index",
-                String(nextIndex)
-            );
+        emit("featured-change", {
+            index: nextIndex,
+            card: cards[nextIndex] || null
+        });
+
+        if (!opts.silent) {
+            const card =
+                cards[nextIndex];
+
+            if (card) {
+                const target =
+                    card.getAttribute(
+                        "data-featured-index"
+                    );
+
+                if (target !== null) {
+                    state.featured.index =
+                        Number(target);
+                }
+            }
         }
     }
+
 
     function nextFeatured() {
-        updateFeaturedCarousel(
-            state.featuredIndex + 1
+        showFeatured(
+            state.featured.index + 1
         );
     }
+
 
     function previousFeatured() {
-        updateFeaturedCarousel(
-            state.featuredIndex - 1
+        showFeatured(
+            state.featured.index - 1
         );
     }
 
 
-    /* =========================================================
-       MODAL HELPERS
-       ========================================================= */
+    function stopFeaturedAutoPlay() {
+        if (state.featured.timer) {
+            window.clearInterval(
+                state.featured.timer
+            );
 
-    function isModalOpen(element) {
-        if (!element) {
-            return false;
+            state.featured.timer = null;
         }
-
-        return (
-            !element.classList.contains("hidden") &&
-            element.classList.contains("is-open")
-        );
     }
 
-    function openModal(element) {
-        if (!element) {
+
+    function startFeaturedAutoPlay() {
+        stopFeaturedAutoPlay();
+
+        /*
+         * No automatic scrolling by default.
+         * It can be enabled explicitly through config.js.
+         */
+
+        const enabled =
+            Boolean(
+                CONFIG &&
+                CONFIG.features &&
+                CONFIG.features.featuredAutoPlay
+            );
+
+        if (
+            !enabled ||
+            state.reducedMotion
+        ) {
             return;
         }
 
-        closeMobileNavigation();
-        closeAccountPanel();
+        const interval =
+            safeNumber(
+                CONFIG &&
+                CONFIG.ui &&
+                CONFIG.ui.featuredInterval,
+                7000
+            );
 
-        element.classList.remove("hidden");
-        element.classList.add("is-open");
-        element.setAttribute(
-            "aria-hidden",
-            "false"
-        );
-
-        if (!state.modalStack.includes(element)) {
-            state.modalStack.push(element);
-        }
-
-        document.body.classList.add("modal-open");
-
-        dispatchAppEvent(
-            "modalopen",
-            {
-                id: element.id || null
-            }
-        );
+        state.featured.timer =
+            window.setInterval(
+                nextFeatured,
+                Math.max(4000, interval)
+            );
     }
 
-    function closeModal(element) {
-        if (!element) {
+
+    function initFeaturedCarousel() {
+        const cards =
+            getFeaturedCards();
+
+        if (!cards.length) {
             return;
         }
 
-        element.classList.remove("is-open");
-        element.setAttribute(
-            "aria-hidden",
-            "true"
-        );
+        state.featured.cards =
+            cards;
 
-        if (!element.classList.contains("global-modal")) {
-            element.classList.add("hidden");
-        }
+        state.featured.initialized =
+            true;
 
-        state.modalStack =
-            state.modalStack.filter(
-                function (modal) {
-                    return modal !== element;
-                }
-            );
-
-        if (!state.modalStack.length) {
-            document.body.classList.remove(
-                "modal-open"
-            );
-        }
-
-        dispatchAppEvent(
-            "modalclose",
-            {
-                id: element.id || null
-            }
-        );
-    }
-
-    function closeTopModal() {
-        const last =
-            state.modalStack[
-                state.modalStack.length - 1
-            ];
-
-        if (last) {
-            closeModal(last);
-            return true;
-        }
-
-        return false;
-    }
-
-    function closeAllModals() {
-        const modals =
-            Array.from(
-                document.querySelectorAll(
-                    ".modal-overlay.is-open"
+        cards.forEach(function (card, index) {
+            if (
+                !card.hasAttribute(
+                    "aria-hidden"
                 )
-            );
-
-        modals.forEach(function (modal) {
-            closeModal(modal);
+            ) {
+                card.setAttribute(
+                    "aria-hidden",
+                    index === 0
+                        ? "false"
+                        : "true"
+                );
+            }
         });
 
-        state.modalStack = [];
+        showFeatured(0, {
+            silent: true
+        });
 
-        document.body.classList.remove(
-            "modal-open"
-        );
+        startFeaturedAutoPlay();
     }
 
 
-    /* =========================================================
-       SPECIFIC MODALS
-       ========================================================= */
-
-    function openEquipmentSelector(slot) {
-        const features = getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.openEquipmentSelector === "function"
-        ) {
-            features.openEquipmentSelector(slot);
-            return;
-        }
-
-        if (DOM.equipmentSelectorModal) {
-            DOM.equipmentSelectorModal.dataset.slot =
-                String(slot || "");
-
-            openModal(
-                DOM.equipmentSelectorModal
-            );
-        }
-    }
-
-    function closeEquipmentSelector() {
-        closeModal(
-            DOM.equipmentSelectorModal
-        );
-    }
-
-    function openQuestionModal() {
-        const account = getAccountAPI();
-
-        if (
-            account &&
-            typeof account.openQuestionModal === "function"
-        ) {
-            account.openQuestionModal();
-            return;
-        }
-
-        if (DOM.questionModal) {
-            openModal(DOM.questionModal);
-        }
-    }
-
-    function closeQuestionModal() {
-        closeModal(DOM.questionModal);
-    }
-
-    function openReportModal() {
-        const account = getAccountAPI();
-
-        if (
-            account &&
-            typeof account.openReportModal === "function"
-        ) {
-            account.openReportModal();
-            return;
-        }
-
-        if (DOM.reportModal) {
-            openModal(DOM.reportModal);
-        }
-    }
-
-    function closeReportModal() {
-        closeModal(DOM.reportModal);
-    }
-
-    function openShareModal(url) {
-        if (!DOM.shareModal) {
-            return;
-        }
-
-        if (DOM.shareUrl) {
-            DOM.shareUrl.value =
-                url ||
-                window.location.href;
-        }
-
-        openModal(DOM.shareModal);
-    }
-
-    function closeShareModal() {
-        closeModal(DOM.shareModal);
-    }
+    APP.showFeatured = showFeatured;
+    APP.nextFeatured = nextFeatured;
+    APP.previousFeatured = previousFeatured;
 
 
-    /* =========================================================
-       COPY TO CLIPBOARD
-       ========================================================= */
+    /* =======================================================
+       SHARE / COPY
+       ======================================================= */
 
     async function copyText(text) {
         const value =
-            String(text ?? "");
+            safeText(text, "");
 
         if (!value) {
             return false;
@@ -2040,7 +2299,8 @@
         try {
             if (
                 navigator.clipboard &&
-                typeof navigator.clipboard.writeText === "function"
+                typeof navigator.clipboard.writeText ===
+                    "function"
             ) {
                 await navigator.clipboard.writeText(
                     value
@@ -2049,10 +2309,7 @@
                 return true;
             }
         } catch (error) {
-            console.warn(
-                "[HoKStation] Clipboard API failed:",
-                error
-            );
+            /* Fallback below. */
         }
 
         try {
@@ -2068,8 +2325,7 @@
             textarea.style.position =
                 "fixed";
 
-            textarea.style.opacity =
-                "0";
+            textarea.style.opacity = "0";
 
             document.body.appendChild(
                 textarea
@@ -2078,35 +2334,40 @@
             textarea.select();
 
             const copied =
-                document.execCommand("copy");
+                document.execCommand(
+                    "copy"
+                );
 
             textarea.remove();
 
             return copied;
         } catch (error) {
-            console.error(
-                "[HoKStation] Clipboard fallback failed:",
-                error
-            );
-
             return false;
         }
     }
 
+
     APP.copyText = copyText;
 
 
-    /* =========================================================
-       NATIVE SHARE
-       ========================================================= */
-
     async function nativeShare(data) {
-        const shareData =
-            data || {
-                title: "HoKStation.gg",
-                text: "Check this out on HoKStation.gg",
-                url: window.location.href
-            };
+        const shareData = {
+            title:
+                safeText(
+                    data && data.title,
+                    "HoKStation.gg"
+                ),
+            text:
+                safeText(
+                    data && data.text,
+                    ""
+                ),
+            url:
+                safeText(
+                    data && data.url,
+                    window.location.href
+                )
+        };
 
         if (
             navigator.share &&
@@ -2119,6 +2380,10 @@
 
                 return true;
             } catch (error) {
+                /*
+                 * AbortError means the user simply closed
+                 * the native share sheet.
+                 */
                 if (
                     error &&
                     error.name === "AbortError"
@@ -2135,89 +2400,84 @@
 
         const copied =
             await copyText(
-                shareData.url ||
-                window.location.href
+                shareData.url
             );
 
         if (copied) {
-            toast(
-                "Share link copied to clipboard.",
+            showToast(
+                "Share link copied.",
                 "success"
             );
-
-            return true;
+        } else {
+            showToast(
+                "Unable to share this link.",
+                "error"
+            );
         }
 
-        toast(
-            "Sharing is not available on this device.",
-            "warning"
-        );
-
-        return false;
+        return copied;
     }
+
 
     APP.nativeShare = nativeShare;
 
 
-    /* =========================================================
-       SHARE BUILD EVENT
-       ========================================================= */
+    function setShareData(data) {
+        const input =
+            byId("share-url");
 
-    function handleShareBuild() {
-        const features = getFeaturesAPI();
+        const shareData = {
+            url:
+                safeText(
+                    data && data.url,
+                    window.location.href
+                ),
+            title:
+                safeText(
+                    data && data.title,
+                    "HoKStation.gg"
+                ),
+            text:
+                safeText(
+                    data && data.text,
+                    ""
+                )
+        };
+
+        state.lastShareData =
+            shareData;
+
+        if (input) {
+            input.value =
+                shareData.url;
+        }
+
+        const title =
+            byId("share-modal-title");
 
         if (
-            features &&
-            typeof features.getCurrentBuildShareURL === "function"
+            title &&
+            data &&
+            data.title
         ) {
-            const url =
-                safeCall(
-                    function () {
-                        return features.getCurrentBuildShareURL();
-                    },
-                    window.location.href
+            title.textContent =
+                "Share " +
+                safeText(
+                    data.title,
+                    "this build"
                 );
-
-            openShareModal(url);
-            return;
         }
 
-        openShareModal(
-            window.location.href
-        );
+        return shareData;
     }
 
 
-    /* =========================================================
+    APP.setShareData = setShareData;
+
+
+    /* =======================================================
        REDUCED MOTION
-       ========================================================= */
-
-    function readReducedMotionPreference() {
-        const stored =
-            safeCall(
-                function () {
-                    return window.localStorage.getItem(
-                        "hokstation_reduced_motion"
-                    );
-                },
-                null
-            );
-
-        if (stored === "true") {
-            return true;
-        }
-
-        if (stored === "false") {
-            return false;
-        }
-
-        return Boolean(
-            window.matchMedia &&
-            window.matchMedia(
-                "(prefers-reduced-motion: reduce)"
-            ).matches
-        );
-    }
+       ======================================================= */
 
     function setReducedMotion(enabled, persist) {
         state.reducedMotion =
@@ -2228,330 +2488,821 @@
             state.reducedMotion
         );
 
-        if (
-            DOM.reducedMotionSetting &&
-            DOM.reducedMotionSetting.checked !==
-                state.reducedMotion
-        ) {
-            DOM.reducedMotionSetting.checked =
-                state.reducedMotion;
-        }
-
         if (persist !== false) {
-            safeCall(
-                function () {
-                    window.localStorage.setItem(
-                        "hokstation_reduced_motion",
-                        state.reducedMotion
-                            ? "true"
-                            : "false"
-                    );
-                },
-                null
-            );
-        }
-
-        updateFeaturedCarousel(
-            state.featuredIndex
-        );
-
-        dispatchAppEvent(
-            "motionchange",
-            {
-                reducedMotion:
+            try {
+                localStorage.setItem(
+                    "hokstation_reduced_motion",
                     state.reducedMotion
+                        ? "true"
+                        : "false"
+                );
+            } catch (error) {
+                /* Storage may be unavailable. */
             }
-        );
+        }
+
+        if (state.reducedMotion) {
+            stopFeaturedAutoPlay();
+        } else {
+            startFeaturedAutoPlay();
+        }
+
+        emit("reduced-motion", {
+            enabled: state.reducedMotion
+        });
     }
 
 
-    /* =========================================================
-       LANGUAGE PREFERENCE
-       ========================================================= */
+    function loadReducedMotionPreference() {
+        let enabled = false;
 
-    function setLanguage(language, persist) {
-        const supported = [
-            "en",
-            "vi",
-            "zh",
-            "fr",
-            "ms",
-            "id",
-            "fil",
-            "ja",
-            "es"
-        ];
+        try {
+            enabled =
+                localStorage.getItem(
+                    "hokstation_reduced_motion"
+                ) === "true";
+        } catch (error) {
+            enabled = false;
+        }
 
-        const value =
-            supported.includes(language)
-                ? language
-                : "en";
+        /*
+         * Respect OS preference only when the user has not
+         * explicitly saved a setting.
+         */
+        let hasSavedPreference = false;
 
-        document.documentElement.lang =
-            value;
+        try {
+            hasSavedPreference =
+                localStorage.getItem(
+                    "hokstation_reduced_motion"
+                ) !== null;
+        } catch (error) {
+            hasSavedPreference = false;
+        }
 
         if (
-            DOM.languageSetting &&
-            DOM.languageSetting.value !== value
+            !hasSavedPreference &&
+            window.matchMedia &&
+            window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+            ).matches
         ) {
-            DOM.languageSetting.value =
-                value;
+            enabled = true;
         }
 
-        if (persist !== false) {
-            safeCall(
-                function () {
-                    window.localStorage.setItem(
-                        "hokstation_language",
-                        value
-                    );
-                },
-                null
-            );
-        }
-
-        dispatchAppEvent(
-            "languagechange",
-            {
-                language: value
-            }
-        );
-    }
-
-    function loadLanguagePreference() {
-        const stored =
-            safeCall(
-                function () {
-                    return window.localStorage.getItem(
-                        "hokstation_language"
-                    );
-                },
-                null
-            );
-
-        if (stored) {
-            setLanguage(
-                stored,
-                false
-            );
-            return;
-        }
-
-        setLanguage(
-            document.documentElement.lang ||
-            "en",
+        setReducedMotion(
+            enabled,
             false
         );
     }
 
 
-    /* =========================================================
-       DATA STATUS
-       ========================================================= */
+    APP.setReducedMotion =
+        setReducedMotion;
 
-    function updateDataStatusUI() {
-        const data = getDataAPI();
 
-        if (!data) {
-            return;
-        }
+    /* =======================================================
+       GENERIC DATA / FEATURE BRIDGE
+       ======================================================= */
 
-        let freshness = null;
-
+    function callDataInit() {
         if (
-            typeof data.getDataFreshness === "function"
+            DATA &&
+            typeof DATA.init === "function"
         ) {
-            freshness =
-                safeCall(
-                    function () {
-                        return data.getDataFreshness();
-                    },
-                    null
+            try {
+                const result =
+                    DATA.init();
+
+                if (
+                    result &&
+                    typeof result.then ===
+                        "function"
+                ) {
+                    return result;
+                }
+            } catch (error) {
+                console.error(
+                    "[HoKStation] Data initialization error:",
+                    error
                 );
-        }
 
-        if (!freshness) {
-            return;
-        }
-
-        const status =
-            freshness.state ||
-            freshness.status ||
-            "unknown";
-
-        const lastUpdated =
-            freshness.lastUpdated ||
-            freshness.updatedAt ||
-            null;
-
-        const statusLabels = {
-            ready: "Live data ready",
-            synced: "Data synchronized",
-            fresh: "Data current",
-            stale: "Data may be outdated",
-            loading: "Checking data...",
-            "not-configured": "Data source not configured",
-            error: "Data connection issue",
-            unknown: "Data status unavailable"
-        };
-
-        const label =
-            statusLabels[status] ||
-            String(status);
-
-        if (DOM.dataStatusText) {
-            DOM.dataStatusText.textContent =
-                label;
-        }
-
-        if (DOM.dataLastUpdated) {
-            DOM.dataLastUpdated.textContent =
-                lastUpdated
-                    ? "Last update: " +
-                      formatDateTime(lastUpdated)
-                    : "Last update: —";
-        }
-
-        if (DOM.patchDataStatusText) {
-            DOM.patchDataStatusText.textContent =
-                label;
-        }
-
-        if (DOM.patchDataDate) {
-            DOM.patchDataDate.textContent =
-                lastUpdated
-                    ? formatDateTime(lastUpdated)
-                    : "—";
-        }
-
-        [
-            DOM.dataStatusIndicator,
-            DOM.patchDataStatus
-        ].forEach(function (element) {
-            if (!element) {
-                return;
-            }
-
-            element.dataset.status =
-                status;
-        });
-
-        if (DOM.footerStatusText) {
-            if (
-                status === "error"
-            ) {
-                DOM.footerStatusText.textContent =
-                    "Connection Issue";
-            } else if (
-                status === "not-configured"
-            ) {
-                DOM.footerStatusText.textContent =
-                    "Station Preview";
-            } else {
-                DOM.footerStatusText.textContent =
-                    "Station Online";
+                showGlobalError(
+                    "The data layer could not be initialized."
+                );
             }
         }
 
-        if (DOM.footerStatusDot) {
-            DOM.footerStatusDot.dataset.status =
-                status;
-        }
+        return Promise.resolve();
     }
 
 
-    /* =========================================================
-       HOME COUNTS
-       ========================================================= */
+    function callDataLoad() {
+        if (
+            DATA &&
+            typeof DATA.loadAll === "function"
+        ) {
+            try {
+                const result =
+                    DATA.loadAll();
 
-    function updateHomeCounts() {
-        const data = getDataAPI();
+                if (
+                    result &&
+                    typeof result.then ===
+                        "function"
+                ) {
+                    return result;
+                }
 
-        if (!data) {
-            return;
+                return Promise.resolve(result);
+            } catch (error) {
+                console.error(
+                    "[HoKStation] Data loading error:",
+                    error
+                );
+
+                return Promise.reject(error);
+            }
         }
 
-        const heroCount =
-            typeof data.getHeroCount === "function"
-                ? safeCall(
-                    function () {
-                        return data.getHeroCount();
-                    },
-                    0
-                )
-                : 0;
-
-        const equipmentCount =
-            typeof data.getEquipmentCount === "function"
-                ? safeCall(
-                    function () {
-                        return data.getEquipmentCount();
-                    },
-                    0
-                )
-                : 0;
-
-        const buildCount =
-            typeof data.getBuildCount === "function"
-                ? safeCall(
-                    function () {
-                        return data.getBuildCount();
-                    },
-                    0
-                )
-                : 0;
-
-        if (DOM.homeHeroCount) {
-            DOM.homeHeroCount.textContent =
-                formatNumber(heroCount);
-        }
-
-        if (DOM.homeEquipmentCount) {
-            DOM.homeEquipmentCount.textContent =
-                formatNumber(equipmentCount);
-        }
-
-        if (DOM.homeBuildCount) {
-            DOM.homeBuildCount.textContent =
-                formatNumber(buildCount);
-        }
+        return Promise.resolve();
     }
 
 
-    /* =========================================================
-       APP EVENT SYSTEM
-       ========================================================= */
-
-    function dispatchAppEvent(name, detail) {
+    function getCurrentDataStatus() {
         try {
-            window.dispatchEvent(
-                new CustomEvent(
-                    "hokstation:" + name,
-                    {
-                        detail:
-                            detail || {}
-                    }
-                )
-            );
+            if (
+                DATA &&
+                typeof DATA.getDataFreshness ===
+                    "function"
+            ) {
+                return DATA.getDataFreshness();
+            }
+
+            if (
+                DATA &&
+                DATA.status
+            ) {
+                return DATA.status;
+            }
         } catch (error) {
-            /* Older browser fallback is intentionally ignored. */
+            console.warn(
+                "[HoKStation] Data status error:",
+                error
+            );
+        }
+
+        return {
+            state: "not-configured",
+            label: "Data source not configured"
+        };
+    }
+
+
+    function subscribeToData() {
+        if (
+            DATA &&
+            typeof DATA.subscribe ===
+                "function"
+        ) {
+            try {
+                DATA.subscribe(function (payload) {
+                    updateHomeCounts();
+
+                    const status =
+                        payload &&
+                        payload.status
+                            ? payload.status
+                            : getCurrentDataStatus();
+
+                    updateDataStatusUI(
+                        status
+                    );
+
+                    emit(
+                        "data-ready",
+                        payload || {}
+                    );
+                });
+            } catch (error) {
+                console.warn(
+                    "[HoKStation] Data subscription failed:",
+                    error
+                );
+            }
         }
     }
 
-    APP.dispatch = dispatchAppEvent;
+
+    /* =======================================================
+       CLICK HANDLERS
+       ======================================================= */
+
+    function handleRouteClick(event) {
+        const element =
+            event.target.closest(
+                "[data-route]"
+            );
+
+        if (!element) {
+            return;
+        }
+
+        /*
+         * Let normal external links work.
+         */
+        if (
+            element.tagName === "A" &&
+            element.target === "_blank"
+        ) {
+            return;
+        }
+
+        const route =
+            element.getAttribute(
+                "data-route"
+            );
+
+        if (!route) {
+            return;
+        }
+
+        event.preventDefault();
+
+        navigate(route);
+    }
 
 
-    /* =========================================================
-       KEYBOARD SHORTCUTS
-       ========================================================= */
+    function handleAccountRouteClick(event) {
+        const element =
+            event.target.closest(
+                "[data-account-route]"
+            );
+
+        if (!element) {
+            return;
+        }
+
+        const route =
+            element.getAttribute(
+                "data-account-route"
+            );
+
+        if (!route) {
+            return;
+        }
+
+        event.preventDefault();
+
+        /*
+         * account.js decides whether the user is authenticated.
+         * app.js only requests navigation.
+         */
+        emit("account-route-request", {
+            route: route,
+            element: element
+        });
+    }
+
+
+    function handleAdminPanelClick(event) {
+        const element =
+            event.target.closest(
+                "[data-admin-panel]"
+            );
+
+        if (!element) {
+            return;
+        }
+
+        const panel =
+            element.getAttribute(
+                "data-admin-panel"
+            );
+
+        if (!panel) {
+            return;
+        }
+
+        emit("admin-panel-request", {
+            panel: panel,
+            element: element
+        });
+    }
+
+
+    /* =======================================================
+       GENERIC MODAL CLICK HANDLING
+       ======================================================= */
+
+    function isModalOverlay(element) {
+        return (
+            element &&
+            element.classList &&
+            element.classList.contains(
+                "modal-overlay"
+            )
+        );
+    }
+
+
+    function handleOverlayClick(event) {
+        const target =
+            event.target;
+
+        if (!isModalOverlay(target)) {
+            return;
+        }
+
+        /*
+         * Only close when the actual backdrop is clicked,
+         * not the modal card itself.
+         */
+        closeModal(target);
+    }
+
+
+    function bindModalCloseButton(
+        buttonId,
+        modalId
+    ) {
+        const button =
+            byId(buttonId);
+
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener(
+            "click",
+            function () {
+                closeModal(modalId);
+            }
+        );
+    }
+
+
+    /* =======================================================
+       GLOBAL CLICK WIRING
+       ======================================================= */
+
+    function bindGlobalControls() {
+        document.addEventListener(
+            "click",
+            handleRouteClick
+        );
+
+        document.addEventListener(
+            "click",
+            handleAccountRouteClick
+        );
+
+        document.addEventListener(
+            "click",
+            handleAdminPanelClick
+        );
+
+        document.addEventListener(
+            "click",
+            handleOverlayClick
+        );
+
+
+        /* Search */
+
+        const searchTrigger =
+            byId("search-trigger");
+
+        if (searchTrigger) {
+            searchTrigger.addEventListener(
+                "click",
+                function () {
+                    openSearch();
+                }
+            );
+        }
+
+        const searchClose =
+            byId("search-close");
+
+        if (searchClose) {
+            searchClose.addEventListener(
+                "click",
+                closeSearch
+            );
+        }
+
+        const searchInput =
+            byId("global-search-input");
+
+        if (searchInput) {
+            searchInput.addEventListener(
+                "input",
+                function (event) {
+                    performSearch(
+                        event.target.value
+                    );
+                }
+            );
+
+            searchInput.addEventListener(
+                "keydown",
+                function (event) {
+                    if (
+                        event.key === "Enter"
+                    ) {
+                        event.preventDefault();
+
+                        if (
+                            state.search.query
+                        ) {
+                            navigate(
+                                "search-results"
+                            );
+                        }
+                    }
+                }
+            );
+        }
+
+        $$("[data-search-type]").forEach(
+            function (button) {
+                button.addEventListener(
+                    "click",
+                    function () {
+                        setSearchFilter(
+                            button.getAttribute(
+                                "data-search-type"
+                            )
+                        );
+                    }
+                );
+            }
+        );
+
+
+        /* Home / Heroes search buttons */
+
+        const homeSearch =
+            byId("home-search-button");
+
+        if (homeSearch) {
+            homeSearch.addEventListener(
+                "click",
+                function () {
+                    openSearch();
+                }
+            );
+        }
+
+        const heroesSearch =
+            byId("heroes-search-button");
+
+        if (heroesSearch) {
+            heroesSearch.addEventListener(
+                "click",
+                function () {
+                    openSearch({
+                        type: "heroes"
+                    });
+                }
+            );
+        }
+
+
+        /* Mobile navigation */
+
+        const mobileTrigger =
+            byId("mobile-menu-trigger");
+
+        if (mobileTrigger) {
+            mobileTrigger.addEventListener(
+                "click",
+                toggleMobileNavigation
+            );
+        }
+
+        const mobileClose =
+            byId("mobile-menu-close");
+
+        if (mobileClose) {
+            mobileClose.addEventListener(
+                "click",
+                closeMobileNavigation
+            );
+        }
+
+
+        /* Mobile account */
+
+        const mobileAccount =
+            byId("mobile-account-trigger");
+
+        if (mobileAccount) {
+            mobileAccount.addEventListener(
+                "click",
+                function () {
+                    closeMobileNavigation();
+                    openAccountPanel();
+                }
+            );
+        }
+
+
+        /* Account */
+
+        const accountTrigger =
+            byId("account-trigger");
+
+        if (accountTrigger) {
+            accountTrigger.addEventListener(
+                "click",
+                toggleAccountPanel
+            );
+        }
+
+        const accountClose =
+            byId("account-close");
+
+        if (accountClose) {
+            accountClose.addEventListener(
+                "click",
+                closeAccountPanel
+            );
+        }
+
+
+        /* Auth */
+
+        const loginOpen =
+            byId("login-open");
+
+        if (loginOpen) {
+            loginOpen.addEventListener(
+                "click",
+                function () {
+                    openAuthModal("login");
+                }
+            );
+        }
+
+        const registerOpen =
+            byId("register-open");
+
+        if (registerOpen) {
+            registerOpen.addEventListener(
+                "click",
+                function () {
+                    openAuthModal("register");
+                }
+            );
+        }
+
+        const authClose =
+            byId("auth-modal-close");
+
+        if (authClose) {
+            authClose.addEventListener(
+                "click",
+                closeAuthModal
+            );
+        }
+
+        $$("[data-auth-tab]").forEach(
+            function (button) {
+                button.addEventListener(
+                    "click",
+                    function () {
+                        setAuthTab(
+                            button.getAttribute(
+                                "data-auth-tab"
+                            )
+                        );
+                    }
+                );
+            }
+        );
+
+        const forgotPassword =
+            byId("forgot-password-open");
+
+        if (forgotPassword) {
+            forgotPassword.addEventListener(
+                "click",
+                function () {
+                    const loginEmail =
+                        byId("login-email");
+
+                    const recoveryEmail =
+                        byId("recovery-email");
+
+                    if (
+                        loginEmail &&
+                        recoveryEmail
+                    ) {
+                        recoveryEmail.value =
+                            loginEmail.value;
+                    }
+
+                    setAuthTab("recovery");
+                }
+            );
+        }
+
+        const recoveryBack =
+            byId("recovery-back");
+
+        if (recoveryBack) {
+            recoveryBack.addEventListener(
+                "click",
+                function () {
+                    setAuthTab("login");
+                }
+            );
+        }
+
+
+        /* Generic modal close buttons */
+
+        bindModalCloseButton(
+            "equipment-selector-close",
+            "equipment-selector-modal"
+        );
+
+        bindModalCloseButton(
+            "question-modal-close",
+            "question-modal"
+        );
+
+        bindModalCloseButton(
+            "report-modal-close",
+            "report-modal"
+        );
+
+        bindModalCloseButton(
+            "share-modal-close",
+            "share-modal"
+        );
+
+
+        /* Confirm */
+
+        const confirmAccept =
+            byId("confirm-accept");
+
+        if (confirmAccept) {
+            confirmAccept.addEventListener(
+                "click",
+                function () {
+                    if (
+                        typeof confirmAccept
+                            .__hokstationConfirmHandler ===
+                            "function"
+                    ) {
+                        confirmAccept
+                            .__hokstationConfirmHandler();
+                    } else {
+                        resolveConfirm(true);
+                    }
+                }
+            );
+        }
+
+        const confirmCancel =
+            byId("confirm-cancel");
+
+        if (confirmCancel) {
+            confirmCancel.addEventListener(
+                "click",
+                function () {
+                    if (
+                        typeof confirmCancel
+                            .__hokstationConfirmHandler ===
+                            "function"
+                    ) {
+                        confirmCancel
+                            .__hokstationConfirmHandler();
+                    } else {
+                        resolveConfirm(false);
+                    }
+                }
+            );
+        }
+
+
+        /* Global error */
+
+        const errorClose =
+            byId("global-error-close");
+
+        if (errorClose) {
+            errorClose.addEventListener(
+                "click",
+                hideGlobalError
+            );
+        }
+
+
+        /* Featured carousel */
+
+        const featuredPrevious =
+            byId("featured-prev");
+
+        if (featuredPrevious) {
+            featuredPrevious.addEventListener(
+                "click",
+                previousFeatured
+            );
+        }
+
+        const featuredNext =
+            byId("featured-next");
+
+        if (featuredNext) {
+            featuredNext.addEventListener(
+                "click",
+                nextFeatured
+            );
+        }
+
+
+        /* Share */
+
+        const copyShare =
+            byId("copy-share-url");
+
+        if (copyShare) {
+            copyShare.addEventListener(
+                "click",
+                async function () {
+                    const input =
+                        byId("share-url");
+
+                    if (!input) {
+                        return;
+                    }
+
+                    const success =
+                        await copyText(
+                            input.value
+                        );
+
+                    if (success) {
+                        showToast(
+                            "Share link copied.",
+                            "success"
+                        );
+                    } else {
+                        showToast(
+                            "Unable to copy the link.",
+                            "error"
+                        );
+                    }
+                }
+            );
+        }
+
+        const nativeShareButton =
+            byId("native-share-button");
+
+        if (nativeShareButton) {
+            nativeShareButton.addEventListener(
+                "click",
+                function () {
+                    nativeShare(
+                        state.lastShareData
+                    );
+                }
+            );
+        }
+
+
+        /* Footer report */
+
+        const footerReport =
+            byId("footer-report-button");
+
+        if (footerReport) {
+            footerReport.addEventListener(
+                "click",
+                function () {
+                    openModal(
+                        "report-modal"
+                    );
+                }
+            );
+        }
+    }
+
+
+    /* =======================================================
+       KEYBOARD CONTROLS
+       ======================================================= */
 
     function handleKeyboard(event) {
-        const key =
-            String(event.key || "").toLowerCase();
-
-        if (key === "escape") {
-            if (state.search.isOpen) {
-                closeSearchPanel();
+        if (event.key === "Escape") {
+            if (state.search.open) {
+                closeSearch();
                 return;
             }
 
@@ -2565,1721 +3316,250 @@
                 return;
             }
 
-            if (closeTopModal()) {
-                return;
-            }
-        }
-
-        const isSearchShortcut =
-            (event.ctrlKey || event.metaKey) &&
-            key === "k";
-
-        if (isSearchShortcut) {
-            event.preventDefault();
-            openSearchPanel();
-        }
-
-        if (
-            key === "/" &&
-            !isTypingContext(event.target)
-        ) {
-            event.preventDefault();
-            openSearchPanel();
-        }
-
-        if (
-            key === "arrowright" &&
-            !isTypingContext(event.target) &&
-            DOM.featuredCards.length
-        ) {
-            nextFeatured();
-        }
-
-        if (
-            key === "arrowleft" &&
-            !isTypingContext(event.target) &&
-            DOM.featuredCards.length
-        ) {
-            previousFeatured();
-        }
-    }
-
-    function isTypingContext(element) {
-        if (!element) {
-            return false;
-        }
-
-        const tag =
-            String(
-                element.tagName || ""
-            ).toLowerCase();
-
-        return (
-            tag === "input" ||
-            tag === "textarea" ||
-            tag === "select" ||
-            element.isContentEditable
-        );
-    }
-
-
-    /* =========================================================
-       FOCUS / ACCESSIBILITY
-       ========================================================= */
-
-    function focusFirstModalControl(modal) {
-        if (!modal) {
-            return;
-        }
-
-        const target =
-            modal.querySelector(
-                "input:not([disabled]), " +
-                "textarea:not([disabled]), " +
-                "select:not([disabled]), " +
-                "button:not([disabled]), " +
-                "[tabindex]:not([tabindex='-1'])"
-            );
-
-        if (target) {
-            window.setTimeout(
-                function () {
-                    target.focus();
-                },
-                20
-            );
-        }
-    }
-
-
-    /* =========================================================
-       OUTSIDE CLICK
-       ========================================================= */
-
-    function handleDocumentClick(event) {
-        if (
-            state.accountPanelOpen &&
-            DOM.accountPanel &&
-            !DOM.accountPanel.contains(event.target) &&
-            DOM.accountTrigger &&
-            !DOM.accountTrigger.contains(event.target)
-        ) {
-            closeAccountPanel();
-        }
-
-        if (
-            state.mobileNavigationOpen &&
-            DOM.mobileNavigation &&
-            !DOM.mobileNavigation.contains(event.target) &&
-            DOM.mobileMenuTrigger &&
-            !DOM.mobileMenuTrigger.contains(event.target)
-        ) {
-            closeMobileNavigation();
-        }
-    }
-
-
-    /* =========================================================
-       GENERIC DIALOG BACKDROP
-       ========================================================= */
-
-    function handleModalBackdropClick(event) {
-        const target =
-            event.target;
-
-        if (
-            target &&
-            target.classList &&
-            target.classList.contains(
-                "modal-overlay"
-            )
-        ) {
-            const account =
-                getAccountAPI();
-
-            if (
-                account &&
-                typeof account.handleModalBackdrop === "function"
-            ) {
-                const handled =
-                    safeCall(
-                        function () {
-                            return account.handleModalBackdrop(
-                                target.id
-                            );
-                        },
-                        false
-                    );
-
-                if (handled) {
-                    return;
-                }
-            }
-
-            closeModal(target);
-        }
-    }
-
-
-    /* =========================================================
-       EQUIPMENT SLOT EVENTS
-       ========================================================= */
-
-    function handleSlotAction(event) {
-        const button =
-            event.target.closest(
-                "[data-slot-action]"
-            );
-
-        if (!button) {
-            return;
-        }
-
-        const slot =
-            Number(
-                button.getAttribute(
-                    "data-slot-action"
-                )
-            );
-
-        if (!Number.isFinite(slot)) {
-            return;
-        }
-
-        openEquipmentSelector(slot);
-    }
-
-
-    /* =========================================================
-       FILTER BUTTON HELPERS
-       ========================================================= */
-
-    function setActiveButton(
-        buttons,
-        attribute,
-        value
-    ) {
-        buttons.forEach(function (button) {
-            const active =
-                button.getAttribute(attribute) ===
-                value;
-
-            button.classList.toggle(
-                "is-active",
-                active
-            );
-
-            button.setAttribute(
-                "aria-pressed",
-                active ? "true" : "false"
-            );
-        });
-    }
-
-
-    /* =========================================================
-       HERO FILTER BRIDGE
-       ========================================================= */
-
-    function handleHeroRoleFilter(event) {
-        const button =
-            event.currentTarget;
-
-        const role =
-            button.getAttribute(
-                "data-hero-role"
-            );
-
-        setActiveButton(
-            DOM.heroRoleButtons,
-            "data-hero-role",
-            role
-        );
-
-        const data =
-            getDataAPI();
-
-        if (
-            data &&
-            typeof data.filterHeroes === "function"
-        ) {
-            safeCall(
-                function () {
-                    return data.filterHeroes(role);
-                },
-                []
-            );
-        }
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderHeroes === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderHeroes();
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       EQUIPMENT FILTER BRIDGE
-       ========================================================= */
-
-    function handleEquipmentTypeFilter(event) {
-        const button =
-            event.currentTarget;
-
-        const type =
-            button.getAttribute(
-                "data-equipment-type"
-            );
-
-        setActiveButton(
-            DOM.equipmentTypeButtons,
-            "data-equipment-type",
-            type
-        );
-
-        const data =
-            getDataAPI();
-
-        if (
-            data &&
-            typeof data.filterEquipment === "function"
-        ) {
-            safeCall(
-                function () {
-                    return data.filterEquipment(type);
-                },
-                []
-            );
-        }
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderEquipment === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderEquipment();
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       HERO SORT BRIDGE
-       ========================================================= */
-
-    function handleHeroSort() {
-        if (!DOM.heroSort) {
-            return;
-        }
-
-        const value =
-            DOM.heroSort.value;
-
-        const data =
-            getDataAPI();
-
-        if (
-            data &&
-            typeof data.sortHeroes === "function"
-        ) {
-            safeCall(
-                function () {
-                    return data.sortHeroes(value);
-                },
-                []
-            );
-        }
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderHeroes === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderHeroes();
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       HISTORY TAB BRIDGE
-       ========================================================= */
-
-    function handleHistoryTab(event) {
-        const button =
-            event.currentTarget;
-
-        const tab =
-            button.getAttribute(
-                "data-history-tab"
-            );
-
-        setActiveButton(
-            DOM.historyTabButtons,
-            "data-history-tab",
-            tab
-        );
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderHistory === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderHistory(tab);
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       FAVORITE TAB BRIDGE
-       ========================================================= */
-
-    function handleFavoriteTab(event) {
-        const button =
-            event.currentTarget;
-
-        const tab =
-            button.getAttribute(
-                "data-favorite-tab"
-            );
-
-        setActiveButton(
-            DOM.favoriteTabButtons,
-            "data-favorite-tab",
-            tab
-        );
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderFavorites === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderFavorites(tab);
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       COMMUNITY FILTER BRIDGE
-       ========================================================= */
-
-    function handleCommunityFilter(event) {
-        const button =
-            event.currentTarget;
-
-        const filter =
-            button.getAttribute(
-                "data-community-filter"
-            );
-
-        setActiveButton(
-            DOM.communityFilterButtons,
-            "data-community-filter",
-            filter
-        );
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderCommunity === "function"
-        ) {
-            safeCall(
-                function () {
-                    features.renderCommunity(filter);
-                }
-            );
-        }
-    }
-
-
-    /* =========================================================
-       ADMIN PANEL BRIDGE
-       ========================================================= */
-
-    function handleAdminPanel(event) {
-        const button =
-            event.currentTarget;
-
-        const panel =
-            button.getAttribute(
-                "data-admin-panel"
-            );
-
-        const account =
-            getAccountAPI();
-
-        if (
-            account &&
-            typeof account.openAdminPanel === "function"
-        ) {
-            account.openAdminPanel(panel);
-            return;
-        }
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.renderAdminPanel === "function"
-        ) {
-            features.renderAdminPanel(
-                panel
-            );
-            return;
-        }
-
-        toast(
-            "Admin tools are not available yet.",
-            "warning"
-        );
-    }
-
-
-    /* =========================================================
-       AUTH TAB BRIDGE
-       ========================================================= */
-
-    function handleAuthTab(event) {
-        const button =
-            event.currentTarget;
-
-        const tab =
-            button.getAttribute(
-                "data-auth-tab"
-            );
-
-        DOM.authTabs.forEach(function (item) {
-            const active =
-                item.getAttribute(
-                    "data-auth-tab"
-                ) === tab;
-
-            item.classList.toggle(
-                "is-active",
-                active
-            );
-        });
-
-        DOM.authForms.forEach(function (form) {
-            const active =
-                form.getAttribute(
-                    "data-auth-form"
-                ) === tab;
-
-            form.classList.toggle(
-                "hidden",
-                !active
-            );
-        });
-    }
-
-
-    /* =========================================================
-       AUTH MODAL
-       ========================================================= */
-
-    function openAuthModal(tab) {
-        if (!DOM.authModal) {
-            return;
-        }
-
-        const selectedTab =
-            tab || "login";
-
-        const matchingTab =
-            DOM.authTabs.find(
-                function (button) {
-                    return (
-                        button.getAttribute(
-                            "data-auth-tab"
-                        ) === selectedTab
+            const openModalElement =
+                $(".modal-overlay.is-open");
+
+            if (openModalElement) {
+                if (
+                    openModalElement.id ===
+                    "auth-modal"
+                ) {
+                    closeAuthModal();
+                } else {
+                    closeModal(
+                        openModalElement
                     );
                 }
-            );
-
-        if (matchingTab) {
-            matchingTab.click();
-        }
-
-        openModal(
-            DOM.authModal
-        );
-
-        focusFirstModalControl(
-            DOM.authModal
-        );
-    }
-
-    function closeAuthModal() {
-        closeModal(
-            DOM.authModal
-        );
-    }
-
-
-    /* =========================================================
-       ACCOUNT ROUTE BRIDGE
-       ========================================================= */
-
-    function handleAccountRoute(event) {
-        const route =
-            event.currentTarget.getAttribute(
-                "data-account-route"
-            );
-
-        if (!route) {
-            return;
-        }
-
-        closeAccountPanel();
-
-        if (route === "profile") {
-            window.location.hash =
-                "profile";
-            return;
-        }
-
-        if (route === "saved-builds") {
-            window.location.hash =
-                "saved-builds";
-            return;
-        }
-
-        if (route === "favorites") {
-            window.location.hash =
-                "favorites";
-            return;
-        }
-
-        if (route === "activity") {
-            window.location.hash =
-                "activity";
-            return;
-        }
-
-        navigate(route);
-    }
-
-
-    /* =========================================================
-       BUILD ACTION BRIDGES
-       ========================================================= */
-
-    function handleCreateBuild() {
-        window.location.hash =
-            "build-lab";
-    }
-
-    function handleClearBuild() {
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.clearBuild === "function"
-        ) {
-            features.clearBuild();
-            return;
-        }
-
-        toast(
-            "Build tools are still loading.",
-            "warning"
-        );
-    }
-
-    function handleSaveBuild() {
-        const account =
-            getAccountAPI();
-
-        if (
-            account &&
-            typeof account.saveCurrentBuild === "function"
-        ) {
-            account.saveCurrentBuild();
-            return;
-        }
-
-        const features =
-            getFeaturesAPI();
-
-        if (
-            features &&
-            typeof features.saveCurrentBuild === "function"
-        ) {
-            features.saveCurrentBuild();
-            return;
-        }
-
-        toast(
-            "Build saving is not available yet.",
-            "warning"
-        );
-    }
-
-
-    /* =========================================================
-       REPORT BRIDGE
-       ========================================================= */
-
-    function handleReportRequest() {
-        openReportModal();
-    }
-
-
-    /* =========================================================
-       DATA INITIALIZATION
-       ========================================================= */
-
-    async function initializeData() {
-        const data =
-            getDataAPI();
-
-        if (!data) {
-            setLoaderProgress(
-                45,
-                "Preparing station..."
-            );
-
-            return;
-        }
-
-        setLoaderProgress(
-            35,
-            "Preparing station data..."
-        );
-
-        if (
-            typeof data.init === "function"
-        ) {
-            try {
-                await data.init();
-            } catch (error) {
-                console.error(
-                    "[HoKStation] Data initialization failed:",
-                    error
-                );
-
-                showGlobalError(
-                    "The station data layer could not initialize. Some live features may be unavailable."
-                );
-            }
-        }
-
-        setLoaderProgress(
-            65,
-            "Checking station data..."
-        );
-
-        if (
-            typeof data.loadAll === "function"
-        ) {
-            try {
-                await data.loadAll({
-                    background: true
-                });
-            } catch (error) {
-                console.warn(
-                    "[HoKStation] Data loading warning:",
-                    error
-                );
-
-                /*
-                 * Do not crash the entire application.
-                 * data.js owns its own status state.
-                 */
-            }
-        }
-
-        updateHomeCounts();
-        updateDataStatusUI();
-
-        setLoaderProgress(
-            80,
-            "Preparing interface..."
-        );
-    }
-
-
-    /* =========================================================
-       FEATURE INITIALIZATION
-       ========================================================= */
-
-    function initializeFeatures() {
-        const features =
-            getFeaturesAPI();
-
-        if (!features) {
-            return;
-        }
-
-        if (
-            typeof features.init === "function"
-        ) {
-            safeCall(
-                function () {
-                    return features.init();
-                }
-            );
-        }
-
-        updateHomeCounts();
-        updateDataStatusUI();
-    }
-
-
-    /* =========================================================
-       ACCOUNT INITIALIZATION
-       ========================================================= */
-
-    async function initializeAccount() {
-        const account =
-            getAccountAPI();
-
-        if (!account) {
-            return;
-        }
-
-        setLoaderProgress(
-            88,
-            "Preparing account..."
-        );
-
-        if (
-            typeof account.init === "function"
-        ) {
-            try {
-                await account.init();
-            } catch (error) {
-                console.warn(
-                    "[HoKStation] Account initialization warning:",
-                    error
-                );
             }
         }
     }
 
 
-    /* =========================================================
-       EVENT LISTENERS
-       ========================================================= */
+    /* =======================================================
+       HASH / HISTORY
+       ======================================================= */
 
-    function bindEvents() {
-
-        /* -----------------------------------------------------
-           Routing
-           ----------------------------------------------------- */
-
+    function bindHistory() {
         window.addEventListener(
             "hashchange",
             handleHashChange
         );
 
-        DOM.routeLinks.forEach(function (link) {
-            link.addEventListener(
-                "click",
-                handleRouteLinkClick
-            );
+        window.addEventListener(
+            "popstate",
+            handleHashChange
+        );
+    }
+
+
+    /* =======================================================
+       INITIAL PAGE STATE
+       ======================================================= */
+
+    function initializeRoute() {
+        const route =
+            getHashRoute();
+
+        /*
+         * This updates sections without creating an extra
+         * history entry during initial page load.
+         */
+        navigate(route, {
+            updateHash: false,
+            preserveScroll: true
         });
+    }
 
 
-        /* -----------------------------------------------------
-           Mobile navigation
-           ----------------------------------------------------- */
+    /* =======================================================
+       APP INITIALIZATION
+       ======================================================= */
 
-        if (DOM.mobileMenuTrigger) {
-            DOM.mobileMenuTrigger.addEventListener(
-                "click",
-                toggleMobileNavigation
-            );
+    async function initialize() {
+        if (state.initialized) {
+            return APP;
         }
 
-        if (DOM.mobileMenuClose) {
-            DOM.mobileMenuClose.addEventListener(
-                "click",
-                closeMobileNavigation
-            );
-        }
+        state.initialized = true;
 
-        if (DOM.mobileAccountTrigger) {
-            DOM.mobileAccountTrigger.addEventListener(
-                "click",
-                function () {
-                    closeMobileNavigation();
-                    openAccountPanel();
-                }
-            );
-        }
+        loadReducedMotionPreference();
 
+        setLoaderProgress(5);
+        setLoaderStatus(
+            "Initializing station..."
+        );
 
-        /* -----------------------------------------------------
-           Account panel
-           ----------------------------------------------------- */
-
-        if (DOM.accountTrigger) {
-            DOM.accountTrigger.addEventListener(
-                "click",
-                toggleAccountPanel
-            );
-        }
-
-        if (DOM.accountClose) {
-            DOM.accountClose.addEventListener(
-                "click",
-                closeAccountPanel
-            );
-        }
-
-        document
-            .querySelectorAll("[data-account-route]")
-            .forEach(function (button) {
-                button.addEventListener(
-                    "click",
-                    handleAccountRoute
-                );
-            });
-
-
-        /* -----------------------------------------------------
-           Search
-           ----------------------------------------------------- */
-
-        if (DOM.searchTrigger) {
-            DOM.searchTrigger.addEventListener(
-                "click",
-                toggleSearchPanel
-            );
-        }
-
-        if (DOM.searchClose) {
-            DOM.searchClose.addEventListener(
-                "click",
-                closeSearchPanel
-            );
-        }
-
-        if (DOM.homeSearchButton) {
-            DOM.homeSearchButton.addEventListener(
-                "click",
-                function () {
-                    openSearchPanel();
-                }
-            );
-        }
-
-        if (DOM.heroesSearchButton) {
-            DOM.heroesSearchButton.addEventListener(
-                "click",
-                function () {
-                    openSearchPanel();
-                    setSearchType("heroes");
-                }
-            );
-        }
-
-        if (DOM.globalSearchInput) {
-            DOM.globalSearchInput.addEventListener(
-                "input",
-                handleSearchInput
-            );
-
-            DOM.globalSearchInput.addEventListener(
-                "keydown",
-                function (event) {
-                    if (
-                        event.key === "Enter" &&
-                        state.search.query.trim()
-                    ) {
-                        event.preventDefault();
-
-                        window.location.hash =
-                            "search-results?q=" +
-                            encodeURIComponent(
-                                state.search.query.trim()
-                            ) +
-                            "&type=" +
-                            encodeURIComponent(
-                                state.search.type
-                            );
-
-                        closeSearchPanel();
-                    }
-                }
-            );
-        }
-
-        DOM.searchTypeButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                function () {
-                    setSearchType(
-                        button.getAttribute(
-                            "data-search-type"
-                        )
-                    );
-                }
-            );
-        });
-
-        if (DOM.globalSearchResults) {
-            DOM.globalSearchResults.addEventListener(
-                "click",
-                handleSearchResultClick
-            );
-        }
-
-        if (DOM.searchResultsPageContent) {
-            DOM.searchResultsPageContent.addEventListener(
-                "click",
-                handleSearchResultClick
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Featured carousel
-           ----------------------------------------------------- */
-
-        if (DOM.featuredPrev) {
-            DOM.featuredPrev.addEventListener(
-                "click",
-                previousFeatured
-            );
-        }
-
-        if (DOM.featuredNext) {
-            DOM.featuredNext.addEventListener(
-                "click",
-                nextFeatured
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Hero controls
-           ----------------------------------------------------- */
-
-        DOM.heroRoleButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleHeroRoleFilter
-            );
-        });
-
-        if (DOM.heroSort) {
-            DOM.heroSort.addEventListener(
-                "change",
-                handleHeroSort
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Equipment controls
-           ----------------------------------------------------- */
-
-        DOM.equipmentTypeButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleEquipmentTypeFilter
-            );
-        });
-
-
-        /* -----------------------------------------------------
-           History / favorites / community
-           ----------------------------------------------------- */
-
-        DOM.historyTabButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleHistoryTab
-            );
-        });
-
-        DOM.favoriteTabButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleFavoriteTab
-            );
-        });
-
-        DOM.communityFilterButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleCommunityFilter
-            );
-        });
-
-
-        /* -----------------------------------------------------
-           Build controls
-           ----------------------------------------------------- */
-
-        if (DOM.createBuildButton) {
-            DOM.createBuildButton.addEventListener(
-                "click",
-                handleCreateBuild
-            );
-        }
-
-        if (DOM.openBuildLab) {
-            DOM.openBuildLab.addEventListener(
-                "click",
-                handleCreateBuild
-            );
-        }
-
-        if (DOM.clearBuildButton) {
-            DOM.clearBuildButton.addEventListener(
-                "click",
-                handleClearBuild
-            );
-        }
-
-        if (DOM.saveBuildButton) {
-            DOM.saveBuildButton.addEventListener(
-                "click",
-                handleSaveBuild
-            );
-        }
-
-        if (DOM.shareBuildButton) {
-            DOM.shareBuildButton.addEventListener(
-                "click",
-                handleShareBuild
-            );
-        }
-
-        if (DOM.buildSlots) {
-            DOM.buildSlots.addEventListener(
-                "click",
-                handleSlotAction
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Equipment selector
-           ----------------------------------------------------- */
-
-        if (DOM.equipmentSelectorClose) {
-            DOM.equipmentSelectorClose.addEventListener(
-                "click",
-                closeEquipmentSelector
-            );
-        }
-
-        if (DOM.equipmentSelectorSearch) {
-            DOM.equipmentSelectorSearch.addEventListener(
-                "input",
-                function () {
-                    const features =
-                        getFeaturesAPI();
-
-                    if (
-                        features &&
-                        typeof features.filterEquipmentSelector === "function"
-                    ) {
-                        features.filterEquipmentSelector(
-                            DOM.equipmentSelectorSearch.value
-                        );
-                    }
-                }
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Community modals
-           ----------------------------------------------------- */
-
-        if (DOM.askQuestionButton) {
-            DOM.askQuestionButton.addEventListener(
-                "click",
-                openQuestionModal
-            );
-        }
-
-        if (DOM.reportButton) {
-            DOM.reportButton.addEventListener(
-                "click",
-                handleReportRequest
-            );
-        }
-
-        if (DOM.footerReportButton) {
-            DOM.footerReportButton.addEventListener(
-                "click",
-                handleReportRequest
-            );
-        }
-
-        if (DOM.questionModalClose) {
-            DOM.questionModalClose.addEventListener(
-                "click",
-                closeQuestionModal
-            );
-        }
-
-        if (DOM.reportModalClose) {
-            DOM.reportModalClose.addEventListener(
-                "click",
-                closeReportModal
-            );
-
-
-        /* -----------------------------------------------------
-           Share modal
-           ----------------------------------------------------- */
-
-        if (DOM.shareModalClose) {
-            DOM.shareModalClose.addEventListener(
-                "click",
-                closeShareModal
-            );
-        }
-
-        if (DOM.copyShareUrl) {
-            DOM.copyShareUrl.addEventListener(
-                "click",
-                async function () {
-                    const url =
-                        DOM.shareUrl
-                            ? DOM.shareUrl.value
-                            : window.location.href;
-
-                    const copied =
-                        await copyText(url);
-
-                    if (copied) {
-                        toast(
-                            "Share link copied.",
-                            "success"
-                        );
-                    } else {
-                        toast(
-                            "Could not copy the share link.",
-                            "error"
-                        );
-                    }
-                }
-            );
-        }
-
-        if (DOM.nativeShareButton) {
-            DOM.nativeShareButton.addEventListener(
-                "click",
-                function () {
-                    nativeShare({
-                        title:
-                            DOM.shareModalTitle
-                                ? DOM.shareModalTitle.textContent.trim()
-                                : "HoKStation.gg",
-                        text:
-                            "Check this build on HoKStation.gg",
-                        url:
-                            DOM.shareUrl
-                                ? DOM.shareUrl.value
-                                : window.location.href
-                    });
-                }
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Confirm modal
-           ----------------------------------------------------- */
-
-        if (DOM.confirmCancel) {
-            DOM.confirmCancel.addEventListener(
-                "click",
-                function () {
-                    closeModal(
-                        DOM.confirmModal
-                    );
-                }
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Auth
-           ----------------------------------------------------- */
-
-        if (DOM.loginOpen) {
-            DOM.loginOpen.addEventListener(
-                "click",
-                function () {
-                    openAuthModal("login");
-                }
-            );
-        }
-
-        if (DOM.registerOpen) {
-            DOM.registerOpen.addEventListener(
-                "click",
-                function () {
-                    openAuthModal("register");
-                }
-            );
-        }
-
-        if (DOM.authModalClose) {
-            DOM.authModalClose.addEventListener(
-                "click",
-                closeAuthModal
-            );
-        }
-
-        if (DOM.forgotPasswordOpen) {
-            DOM.forgotPasswordOpen.addEventListener(
-                "click",
-                function () {
-                    handleAuthTab({
-                        currentTarget: {
-                            getAttribute: function (name) {
-                                return name === "data-auth-tab"
-                                    ? "recovery"
-                                    : null;
-                            }
-                        }
-                    });
-                }
-            );
-        }
-
-        if (DOM.recoveryBack) {
-            DOM.recoveryBack.addEventListener(
-                "click",
-                function () {
-                    const loginTab =
-                        DOM.authTabs.find(
-                            function (button) {
-                                return (
-                                    button.getAttribute(
-                                        "data-auth-tab"
-                                    ) === "login"
-                                );
-                            }
-                        );
-
-                    if (loginTab) {
-                        loginTab.click();
-                    }
-                }
-            );
-        }
-
-        DOM.authTabs.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleAuthTab
-            );
-        });
-
-
-        /* -----------------------------------------------------
-           Settings
-           ----------------------------------------------------- */
-
-        if (DOM.reducedMotionSetting) {
-            DOM.reducedMotionSetting.addEventListener(
-                "change",
-                function () {
-                    setReducedMotion(
-                        DOM.reducedMotionSetting.checked
-                    );
-                }
-            );
-        }
-
-        if (DOM.languageSetting) {
-            DOM.languageSetting.addEventListener(
-                "change",
-                function () {
-                    setLanguage(
-                        DOM.languageSetting.value
-                    );
-
-                    toast(
-                        "Language preference saved.",
-                        "success"
-                    );
-                }
-            );
-        }
-
-
-        /* -----------------------------------------------------
-           Admin
-           ----------------------------------------------------- */
-
-        DOM.adminPanelButtons.forEach(function (button) {
-            button.addEventListener(
-                "click",
-                handleAdminPanel
-            );
-        });
-
-
-        /* -----------------------------------------------------
-           Global
-           ----------------------------------------------------- */
+        bindGlobalControls();
+        bindHistory();
 
         document.addEventListener(
             "keydown",
             handleKeyboard
         );
 
-        document.addEventListener(
-            "click",
-            handleDocumentClick
-        );
+        setLoaderProgress(15);
 
-        document.addEventListener(
-            "click",
-            handleModalBackdropClick
-        );
+        initFeaturedCarousel();
 
-        if (DOM.globalErrorClose) {
-            DOM.globalErrorClose.addEventListener(
-                "click",
-                hideGlobalError
-            );
-        }
+        setLoaderProgress(25);
 
+        initializeRoute();
 
-        /* -----------------------------------------------------
-           Data / feature event listeners
-           ----------------------------------------------------- */
+        setLoaderProgress(35);
 
-        window.addEventListener(
-            "hokstation:datachange",
-            function () {
-                updateHomeCounts();
-                updateDataStatusUI();
-            }
-        );
+        /*
+         * Data.js exists before app.js because of the HTML
+         * dependency order. It may still be unconfigured.
+         */
+        await callDataInit();
 
-        window.addEventListener(
-            "hokstation:datastatus",
-            function () {
-                updateDataStatusUI();
-            }
-        );
+        setLoaderProgress(55);
 
-        window.addEventListener(
-            "hokstation:accountchange",
-            function () {
-                updateDataStatusUI();
-            }
-        );
-    }
-
-
-    /* =========================================================
-       FIX: DYNAMIC MODAL TITLE ACCESS
-       ========================================================= */
-
-    Object.defineProperty(
-        DOM,
-        "shareModalTitle",
-        {
-            configurable: true,
-            get: function () {
-                return document.getElementById(
-                    "share-modal-title"
-                );
-            }
-        }
-    );
-
-
-    /* =========================================================
-       APP BOOT
-       ========================================================= */
-
-    async function boot() {
-        if (state.booted) {
-            return;
-        }
-
-        state.booted = true;
-
-        cacheDOM();
-
-        state.reducedMotion =
-            readReducedMotionPreference();
-
-        setReducedMotion(
-            state.reducedMotion,
-            false
-        );
-
-        loadLanguagePreference();
-
-        showLoader(
-            "Loading station..."
-        );
-
-        setLoaderProgress(
-            10,
-            "Starting HoKStation..."
-        );
-
-        bindEvents();
-
-        setLoaderProgress(
-            20,
-            "Connecting station modules..."
-        );
-
-        try {
-            await initializeData();
-        } catch (error) {
-            console.error(
-                "[HoKStation] Data boot error:",
-                error
-            );
-        }
-
-        try {
-            initializeFeatures();
-        } catch (error) {
-            console.error(
-                "[HoKStation] Feature boot error:",
-                error
-            );
-        }
-
-        try {
-            await initializeAccount();
-        } catch (error) {
-            console.error(
-                "[HoKStation] Account boot error:",
-                error
-            );
-        }
-
-        setLoaderProgress(
-            94,
-            "Finalizing station..."
-        );
+        subscribeToData();
 
         updateHomeCounts();
-        updateDataStatusUI();
 
-        updateFeaturedCarousel(0);
-
-        const initialRoute =
-            getRouteFromHash();
-
-        navigate(
-            initialRoute,
-            {
-                silent: true,
-                skipScroll: true
-            }
+        updateDataStatusUI(
+            getCurrentDataStatus()
         );
 
-        state.ready = true;
+        setLoaderProgress(65);
 
-        dispatchAppEvent(
-            "ready",
-            {
-                version: APP.version
-            }
+        /*
+         * Loading is intentionally graceful. A missing or
+         * unconfigured data source must not destroy the UI.
+         */
+        try {
+            await callDataLoad();
+        } catch (error) {
+            console.error(
+                "[HoKStation] Initial data load failed:",
+                error
+            );
+
+            updateDataStatusUI({
+                state: "error",
+                label: "Data unavailable",
+                error: error
+            });
+        }
+
+        setLoaderProgress(80);
+
+        updateHomeCounts();
+
+        updateDataStatusUI(
+            getCurrentDataStatus()
         );
 
-        setLoaderProgress(
-            100,
+        setLoaderStatus(
+            "Preparing station interface..."
+        );
+
+        setLoaderProgress(90);
+
+        /*
+         * Tell features.js/account.js that core application
+         * infrastructure is ready.
+         */
+        emit("app-ready", {
+            route: state.currentRoute
+        });
+
+        setLoaderStatus(
             "Station ready."
         );
 
+        setLoaderProgress(100);
+
         hideLoader();
+
+        emit("ready", {
+            route: state.currentRoute
+        });
+
+        return APP;
     }
 
 
-    /* =========================================================
-       PUBLIC API
-       ========================================================= */
+    APP.init = initialize;
 
-    APP.state = state;
-    APP.routes = Array.from(ROUTES);
 
-    APP.dom = DOM;
+    /* =======================================================
+       DEBUG / PUBLIC STATE
+       ======================================================= */
 
-    APP.openSearch = openSearchPanel;
-    APP.closeSearch = closeSearchPanel;
+    APP.getState = function () {
+        return {
+            currentRoute:
+                state.currentRoute,
 
-    APP.openAccount = openAccountPanel;
-    APP.closeAccount = closeAccountPanel;
+            previousRoute:
+                state.previousRoute,
 
-    APP.openModal = openModal;
-    APP.closeModal = closeModal;
-    APP.closeAllModals = closeAllModals;
-
-    APP.openAuth = openAuthModal;
-    APP.closeAuth = closeAuthModal;
-
-    APP.openQuestionModal =
-        openQuestionModal;
-
-    APP.openReportModal =
-        openReportModal;
-
-    APP.openShareModal =
-        openShareModal;
-
-    APP.updateDataStatus =
-        updateDataStatusUI;
-
-    APP.updateHomeCounts =
-        updateHomeCounts;
-
-    APP.updateFeatured =
-        updateFeaturedCarousel;
-
-    APP.nextFeatured =
-        nextFeatured;
-
-    APP.previousFeatured =
-        previousFeatured;
-
-    APP.formatNumber =
-        formatNumber;
-
-    APP.formatDate =
-        formatDate;
-
-    APP.formatDateTime =
-        formatDateTime;
-
-    APP.escapeHTML =
-        escapeHTML;
-
-    APP.normalizeText =
-        normalizeText;
-
-    APP.slugify =
-        slugify;
-
-    APP.truncate =
-        truncate;
-
-    APP.getRoute =
-        function () {
-            return state.currentRoute;
-        };
-
-    APP.getSearchState =
-        function () {
-            return {
+            search: {
                 query:
                     state.search.query,
+
                 type:
                     state.search.type,
-                isOpen:
-                    state.search.isOpen
-            };
+
+                open:
+                    state.search.open
+            },
+
+            mobileNavigationOpen:
+                state.mobileNavigationOpen,
+
+            accountPanelOpen:
+                state.accountPanelOpen,
+
+            reducedMotion:
+                state.reducedMotion,
+
+            dataStatus:
+                state.lastDataStatus
         };
-
-    APP.getConfig =
-        getConfig;
-
-    APP.getConfigValue =
-        getConfigValue;
-
-    APP.getData =
-        getDataAPI;
-
-    APP.getFeatures =
-        getFeaturesAPI;
-
-    APP.getAccount =
-        getAccountAPI;
+    };
 
 
-    /* =========================================================
-       GLOBAL CONVENIENCE HOOKS
-       ========================================================= */
-
-    window.HoKStation = window.HoKStation || {};
-
-    window.HoKStation.app =
-        APP;
-
-    window.HoKStation.toast =
-        toast;
-
-    window.HoKStation.navigate =
-        navigate;
-
-    window.HoKStation.openSearch =
-        openSearchPanel;
-
-    window.HoKStation.openAccount =
-        openAccountPanel;
-
-    window.HoKStation.openModal =
-        openModal;
-
-    window.HoKStation.closeModal =
-        closeModal;
-
-
-    /* =========================================================
-       START
-       ========================================================= */
+    /* =======================================================
+       DOM READY
+       ======================================================= */
 
     if (
-        document.readyState === "loading"
+        document.readyState ===
+        "loading"
     ) {
         document.addEventListener(
             "DOMContentLoaded",
-            boot,
+            initialize,
             {
                 once: true
             }
         );
     } else {
-        boot();
+        initialize();
     }
+
+
+    /* =======================================================
+       FINAL SAFETY
+       ======================================================= */
+
+    window.addEventListener(
+        "error",
+        function (event) {
+            /*
+             * Do not expose raw internal errors to users.
+             * Log for debugging and show a generic message only
+             * for serious runtime errors.
+             */
+            console.error(
+                "[HoKStation] Runtime error:",
+                event.error || event.message
+            );
+        }
+    );
 
 })();
