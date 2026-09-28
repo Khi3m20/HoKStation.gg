@@ -2127,7 +2127,7 @@
          * Account.js owns authenticated persistence.
          * This event lets account.js save the validated payload.
          */
-        window.dispatchEvent(
+        document.dispatchEvent(
             new CustomEvent(
                 "hokstation:save-build-request",
                 {
