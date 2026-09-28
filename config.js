@@ -137,9 +137,9 @@
              * NEVER put the service_role key here.
              */
 
-            url: "",
+            url: "https://skhwtswrrufhqijruybs.supabase.co",
 
-            anonKey: "",
+            anonKey: "sb_publishable_WpqT3I-p4d_kfQj-JoHaKg_WS3xL-O7",
 
             clientVersion: "2",
 
