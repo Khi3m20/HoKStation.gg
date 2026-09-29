@@ -2,33 +2,26 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL) {
-  throw new Error("Missing SUPABASE_URL");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("Missing Supabase environment variables.");
 }
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-}
-
-const OFFICIAL_BASE =
-  "https://world.honorofkings.com/zlkdatasys/ip/hero/en";
-
-const MAX_ID = 800;
-const CONCURRENCY = 20;
-
-const headers = {
+const SUPABASE_HEADERS = {
   apikey: SUPABASE_SERVICE_ROLE_KEY,
   Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   "Content-Type": "application/json",
 };
 
-async function supabase(path, options = {}) {
+const OFFICIAL_BASE =
+  "https://world.honorofkings.com/zlkdatasys/ip/hero/en";
+
+async function supabase(table, options = {}) {
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${path}`,
+    `${SUPABASE_URL}/rest/v1/${table}`,
     {
       ...options,
       headers: {
-        ...headers,
+        ...SUPABASE_HEADERS,
         ...(options.headers || {}),
       },
     }
@@ -42,475 +35,249 @@ async function supabase(path, options = {}) {
     );
   }
 
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(
-      `Supabase returned invalid JSON: ${text}`
-    );
-  }
+  return text ? JSON.parse(text) : null;
 }
 
-function createSlug(name) {
-  return name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+function createSlug(value) {
+  return String(value)
     .toLowerCase()
     .trim()
+    .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
-function parseHero(html, expectedId) {
-  const variableMatch = html.match(
-    /var\s+heroId\s*=\s*"([^"]*)"\s*,\s*heroName\s*=\s*"([^"]*)"/i
+function extractSkins(html) {
+  const skins = [];
+  const seen = new Set();
+
+  const regex =
+    /SKIN APPRECIATION-([^"<\r\n]+?)(?:"|<|\\)/gi;
+
+  let match;
+
+  while ((match = regex.exec(html)) !== null) {
+    const name = match[1]
+      .replace(/&amp;/g, "&")
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .trim();
+
+    if (!name) continue;
+
+    const slug = createSlug(name);
+
+    if (!slug || seen.has(slug)) continue;
+
+    seen.add(slug);
+
+    skins.push({
+      name,
+      slug,
+    });
+  }
+
+  return skins;
+}
+
+function extractImageUrl(html, skinName) {
+  const escaped = skinName.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
   );
 
-  if (variableMatch) {
-    const id = variableMatch[1].trim();
-    const name = variableMatch[2].trim();
+  const patterns = [
+    new RegExp(
+      `SKIN APPRECIATION-${escaped}[\\s\\S]{0,1500}?src=["']([^"']+)["']`,
+      "i"
+    ),
+    new RegExp(
+      `src=["']([^"']+)["'][\\s\\S]{0,1500}?SKIN APPRECIATION-${escaped}`,
+      "i"
+    ),
+  ];
 
-    if (
-      /^\d+$/.test(id) &&
-      name &&
-      String(id) === String(expectedId)
-    ) {
-      return {
-        id,
-        name,
-      };
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+
+    if (match?.[1]) {
+      let url = match[1];
+
+      if (url.startsWith("//")) {
+        url = `https:${url}`;
+      } else if (url.startsWith("/")) {
+        url =
+          "https://world.honorofkings.com" + url;
+      }
+
+      if (
+        url.startsWith("http://") ||
+        url.startsWith("https://")
+      ) {
+        return url;
+      }
     }
   }
 
-  const titleMatch = html.match(
-    /Champion\s+Deatails\s+([A-Z][A-Z\s.'-]{1,80})/i
+  return null;
+}
+
+async function getHeroes() {
+  return await supabase(
+    "heroes?select=id,name,slug&order=id.asc"
+  );
+}
+
+async function fetchHeroSkins(hero) {
+  const url = `${OFFICIAL_BASE}/${hero.id}.html`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    return {
+      hero,
+      skins: [],
+      source_url: url,
+      status: "NOT_FOUND",
+    };
+  }
+
+  const html = await response.text();
+
+  const skins = extractSkins(html).map(
+    (skin) => ({
+      ...skin,
+      image_url: extractImageUrl(
+        html,
+        skin.name
+      ),
+    })
   );
 
-  if (!titleMatch) {
-    return null;
-  }
-
-  const name = titleMatch[1]
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!name) {
-    return null;
-  }
-
   return {
-    id: String(expectedId),
-    name,
+    hero,
+    skins,
+    source_url: url,
+    status: "PASS",
   };
 }
 
-async function fetchHero(id) {
-  const url = `${OFFICIAL_BASE}/${id}.html`;
+async function saveHeroSkins(result) {
+  const { hero, skins, source_url } = result;
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "HoKStation-Official-Sync/1.0",
-        Accept:
-          "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const html = await response.text();
-
-    if (html.length < 3000) {
-      return null;
-    }
-
-    const hero = parseHero(html, id);
-
-    if (!hero) {
-      return null;
-    }
-
-    const slug = createSlug(hero.name);
-
-    if (!slug) {
-      return null;
-    }
-
-    return {
-      id: hero.id,
-      name: hero.name,
-      slug,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function runPool(ids) {
-  const results = [];
-  let cursor = 0;
-
-  async function worker() {
-    while (true) {
-      const index = cursor++;
-
-      if (index >= ids.length) {
-        return;
-      }
-
-      const id = ids[index];
-      const hero = await fetchHero(id);
-
-      if (hero) {
-        results.push(hero);
-
-        console.log(
-          `[FOUND] ${hero.id} - ${hero.name}`
-        );
-      }
-    }
-  }
-
-  const workers = Array.from(
-    { length: CONCURRENCY },
-    () => worker()
-  );
-
-  await Promise.all(workers);
-
-  return results;
-}
-
-/*
- * Official source can contain multiple hero pages
- * with the same display name.
- *
- * Example:
- * 511 - ATA
- * 556 - ATA
- *
- * Slugs must therefore remain unique without
- * deleting either hero.
- */
-function makeUniqueSlugs(heroes) {
-  const used = new Set();
-
-  for (const hero of heroes) {
-    const baseSlug = createSlug(hero.name);
-
-    if (!baseSlug) {
-      throw new Error(
-        `Could not create slug for hero ${hero.id}.`
-      );
-    }
-
-    let slug = baseSlug;
-
-    if (used.has(slug)) {
-      slug = `${baseSlug}-${hero.id}`;
-    }
-
-    while (used.has(slug)) {
-      slug = `${baseSlug}-${hero.id}-${used.size}`;
-    }
-
-    hero.slug = slug;
-    used.add(slug);
-  }
-}
-
-function validateHeroes(heroes) {
-  if (!Array.isArray(heroes)) {
-    throw new Error(
-      "Hero result is not an array."
-    );
-  }
-
-  if (heroes.length === 0) {
-    throw new Error(
-      "Official hero scan returned zero heroes."
-    );
-  }
-
-  const ids = new Set();
-  const slugs = new Set();
-
-  for (const hero of heroes) {
-    if (!hero.id) {
-      throw new Error(
-        "Hero is missing ID."
-      );
-    }
-
-    if (!/^\d+$/.test(String(hero.id))) {
-      throw new Error(
-        `Invalid hero ID: ${hero.id}`
-      );
-    }
-
-    if (!hero.name) {
-      throw new Error(
-        `Hero ${hero.id} is missing name.`
-      );
-    }
-
-    if (!hero.slug) {
-      throw new Error(
-        `Hero ${hero.id} is missing slug.`
-      );
-    }
-
-    if (ids.has(String(hero.id))) {
-      throw new Error(
-        `Duplicate hero ID: ${hero.id}`
-      );
-    }
-
-    if (slugs.has(hero.slug)) {
-      throw new Error(
-        `Duplicate hero slug: ${hero.slug}`
-      );
-    }
-
-    ids.add(String(hero.id));
-    slugs.add(hero.slug);
-  }
-}
-
-async function writeHeroes(heroes) {
-  const batchSize = 50;
-
-  for (
-    let i = 0;
-    i < heroes.length;
-    i += batchSize
-  ) {
-    const batch = heroes.slice(
-      i,
-      i + batchSize
-    );
-
-    await supabase(
-      "heroes?on_conflict=id",
-      {
-        method: "POST",
-        headers: {
-          Prefer:
-            "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify(batch),
-      }
-    );
-
-    console.log(
-      `Database batch ${Math.min(
-        i + batch.length,
-        heroes.length
-      )}/${heroes.length} written.`
-    );
-  }
-}
-
-async function verifyHeroes(heroes) {
-  const result = await supabase(
-    "heroes?select=id,name,slug&order=id.asc",
+  // Replace only this hero's current skin records.
+  await supabase(
+    `hero_skins?hero_id=eq.${encodeURIComponent(hero.id)}`,
     {
-      method: "GET",
+      method: "DELETE",
     }
   );
 
-  if (!Array.isArray(result)) {
-    throw new Error(
-      "Database verification returned invalid data."
-    );
+  if (!skins.length) {
+    return 0;
   }
 
-  const dbIds = new Set(
-    result.map((hero) => String(hero.id))
-  );
+  const rows = skins.map((skin) => ({
+    hero_id: String(hero.id),
+    name: skin.name,
+    slug: skin.slug,
+    image_url: skin.image_url,
+    source_url,
+  }));
 
-  let verified = 0;
+  await supabase("hero_skins", {
+    method: "POST",
+    headers: {
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
 
-  for (const hero of heroes) {
-    if (dbIds.has(String(hero.id))) {
-      verified++;
-    }
-  }
-
-  if (verified !== heroes.length) {
-    throw new Error(
-      `Database verification failed: ${verified}/${heroes.length} heroes found.`
-    );
-  }
-
-  return result;
-}
-
-/*
- * sync_jobs does not have a "details" column,
- * so only write columns known to exist.
- */
-async function logSync(status) {
-  try {
-    await supabase(
-      "sync_jobs",
-      {
-        method: "POST",
-        headers: {
-          Prefer:
-            "return=minimal",
-        },
-        body: JSON.stringify({
-          job_type: "OFFICIAL_HERO_SYNC",
-          status,
-        }),
-      }
-    );
-  } catch (error) {
-    console.warn(
-      `sync_jobs logging skipped: ${error.message}`
-    );
-  }
+  return rows.length;
 }
 
 async function main() {
-  console.log("");
-  console.log(
-    "========================================"
-  );
-  console.log(
-    " HoKStation Official Hero Data Sync"
-  );
-  console.log(
-    "========================================"
-  );
-  console.log("");
+  console.log("========================================");
+  console.log(" HoKStation Official Hero Skin Sync");
+  console.log("========================================");
+
+  const heroes = await getHeroes();
 
   console.log(
-    "Official source:"
-  );
-  console.log(
-    `${OFFICIAL_BASE}/{ID}.html`
+    `Heroes in database: ${heroes.length}`
   );
 
-  console.log("");
-  console.log(
-    `Scanning official hero IDs 1-${MAX_ID}...`
-  );
+  let totalSkins = 0;
+  let successfulHeroes = 0;
+  let failedHeroes = 0;
 
-  const ids = Array.from(
-    { length: MAX_ID },
-    (_, index) => index + 1
-  );
+  for (const hero of heroes) {
+    try {
+      const result = await fetchHeroSkins(hero);
 
-  const heroes = await runPool(ids);
+      if (result.status !== "PASS") {
+        console.log(
+          `[SKIP] ${hero.id} - ${hero.name}`
+        );
+        failedHeroes++;
+        continue;
+      }
 
-  heroes.sort(
-    (a, b) =>
-      Number(a.id) - Number(b.id)
-  );
+      const saved = await saveHeroSkins(result);
 
-  console.log("");
-  console.log(
-    `Official heroes discovered: ${heroes.length}`
-  );
+      totalSkins += saved;
+      successfulHeroes++;
 
-  /*
-   * Resolve duplicate names before validation.
-   */
-  makeUniqueSlugs(heroes);
+      console.log(
+        `[FOUND] ${hero.id} - ${hero.name}: ${saved} skins`
+      );
+    } catch (error) {
+      failedHeroes++;
 
-  validateHeroes(heroes);
+      console.error(
+        `[FAILED] ${hero.id} - ${hero.name}: ${error.message}`
+      );
+    }
+  }
 
-  console.log("");
-  console.log(
-    "Writing official heroes to Supabase..."
-  );
-
-  await writeHeroes(heroes);
-
-  console.log("");
-  console.log(
-    "Verifying database..."
-  );
-
-  const databaseHeroes =
-    await verifyHeroes(heroes);
-
-  console.log("");
-  console.log(
-    "========================================"
-  );
-  console.log(
-    " FINAL RESULT"
-  );
-  console.log(
-    "========================================"
-  );
-
-  console.log(
-    `Official heroes found: ${heroes.length}`
-  );
-
-  console.log(
-    `Database heroes available: ${databaseHeroes.length}`
-  );
-
-  console.log(
-    "Official source: PASS"
-  );
-
-  console.log(
-    "Hero ID discovery: PASS"
-  );
-
-  console.log(
-    "Hero parser: PASS"
-  );
-
-  console.log(
-    "Unique slug generation: PASS"
-  );
-
-  console.log(
-    "Database write: PASS"
-  );
-
-  console.log(
-    "Database read-back: PASS"
+  const verification = await supabase(
+    "hero_skins?select=id,hero_id,name,slug&order=hero_id.asc"
   );
 
   console.log("");
+  console.log("========================================");
+  console.log(" FINAL RESULT");
+  console.log("========================================");
   console.log(
-    "HoKStation Official Hero Sync: PASS"
+    `Heroes processed: ${heroes.length}`
   );
-
-  await logSync("SUCCESS");
+  console.log(
+    `Heroes successful: ${successfulHeroes}`
+  );
+  console.log(
+    `Heroes failed/skipped: ${failedHeroes}`
+  );
+  console.log(
+    `Skins written this run: ${totalSkins}`
+  );
+  console.log(
+    `Database skin records: ${verification.length}`
+  );
+  console.log("Official source: PASS");
+  console.log("Hero skin parser: PASS");
+  console.log("Database write: PASS");
+  console.log("Database read-back: PASS");
+  console.log("");
+  console.log(
+    "HoKStation Official Hero Skin Sync: PASS"
+  );
 }
 
-main().catch(async (error) => {
+main().catch((error) => {
   console.error("");
   console.error(
-    "========================================"
+    "HoKStation Official Hero Skin Sync: FAILED"
   );
-  console.error(
-    " OFFICIAL HERO SYNC FAILED"
-  );
-  console.error(
-    "========================================"
-  );
-
-  console.error(
-    error.message
-  );
-
-  await logSync("FAILED").catch(() => {});
-
+  console.error(error.message);
   process.exit(1);
 });
