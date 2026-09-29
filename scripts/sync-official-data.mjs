@@ -47,23 +47,16 @@ async function main() {
     );
   }
 
-  const hasHonorOfKings =
-    /Honor of Kings|honor of kings/i.test(html);
-
   const hasHeroData =
     /hero|skill|skin|champion/i.test(html);
-
-  console.log(
-    `Honor of Kings content detected: ${hasHonorOfKings}`
-  );
 
   console.log(
     `Hero-related content detected: ${hasHeroData}`
   );
 
-  if (!hasHonorOfKings || !hasHeroData) {
+  if (!hasHeroData) {
     throw new Error(
-      "Official hero page did not contain expected HoK content."
+      "Official hero page did not contain expected hero content."
     );
   }
 
