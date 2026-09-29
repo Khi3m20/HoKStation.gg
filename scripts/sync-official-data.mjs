@@ -30,18 +30,55 @@ function cleanText(value) {
     .trim();
 }
 
-function printMatches(label, html, regex, limit = 20) {
-  const matches = [...html.matchAll(regex)]
-    .map((match) => cleanText(match[1] || match[0]))
-    .filter(Boolean)
-    .slice(0, limit);
+function parseHeroVariables(html) {
+  const match = html.match(
+    /var\s+heroId\s*=\s*"([^"]*)"\s*,\s*heroName\s*=\s*"([^"]*)"\s*,\s*heroCh\s*=\s*"([^"]*)"\s*,\s*heroHeight\s*=\s*"([^"]*)"/i
+  );
 
-  console.log("");
-  console.log(`${label}: ${matches.length}`);
+  if (!match) {
+    throw new Error(
+      "Could not find official hero variables."
+    );
+  }
 
-  matches.forEach((value, index) => {
-    console.log(`${index + 1}: ${value.slice(0, 500)}`);
-  });
+  return {
+    id: match[1],
+    name: match[2],
+    chineseName: match[3],
+    height: match[4],
+  };
+}
+
+function findSkinNames(html) {
+  const results = [];
+
+  const regex =
+    /SKIN APPRECIATION-[^<"'=\n]{1,150}/gi;
+
+  for (const match of html.matchAll(regex)) {
+    const value = match[0]
+      .replace(/^SKIN APPRECIATION-/i, "")
+      .trim();
+
+    if (value && !results.includes(value)) {
+      results.push(value);
+    }
+  }
+
+  return results;
+}
+
+function findHeroAssetPaths(html) {
+  const regex =
+    /\/zlkdatasys\/ip\/hero\/en\/[^"'<> ]+\.(?:jpg|jpeg|png|webp)/gi;
+
+  return [
+    ...new Set(
+      [...html.matchAll(regex)].map(
+        (match) => match[0]
+      )
+    ),
+  ];
 }
 
 async function main() {
@@ -50,7 +87,7 @@ async function main() {
   );
 
   console.log(
-    "Inspecting official HoK hero page structure..."
+    "Parsing official HoK hero data..."
   );
 
   console.log(OFFICIAL_HERO_URL);
@@ -89,36 +126,41 @@ async function main() {
     );
   }
 
+  const hero = parseHeroVariables(html);
+  const skins = findSkinNames(html);
+  const assets = findHeroAssetPaths(html);
+
   console.log("");
-  console.log("=== HTML STRUCTURE INSPECTION ===");
+  console.log("=== OFFICIAL HERO PARSED DATA ===");
 
-  printMatches(
-    "Script blocks",
-    html,
-    /<script[^>]*>([\s\S]*?)<\/script>/gi,
-    10
+  console.log(`Hero ID: ${hero.id}`);
+  console.log(`Hero Name: ${hero.name}`);
+  console.log(
+    `Chinese Name: ${hero.chineseName || "Not provided"}`
+  );
+  console.log(`Height: ${hero.height}`);
+
+  console.log("");
+  console.log(
+    `Skin names detected: ${skins.length}`
   );
 
-  printMatches(
-    "Data-like attributes",
-    html,
-    /(?:data-[a-z0-9_-]+)\s*=\s*["']([^"']+)["']/gi,
-    30
+  skins.forEach((skin, index) => {
+    console.log(
+      `Skin ${index + 1}: ${skin}`
+    );
+  });
+
+  console.log("");
+  console.log(
+    `Official hero asset paths detected: ${assets.length}`
   );
 
-  printMatches(
-    "Hero-related strings",
-    html,
-    /([^"'<>]{0,120}(?:hero|skill|skin|champion)[^"'<>]{0,180})/gi,
-    30
-  );
-
-  printMatches(
-    "JSON-like objects",
-    html,
-    /(\{[^{}]{0,500}(?:hero|skill|skin|champion)[^{}]{0,500}\})/gi,
-    20
-  );
+  assets.forEach((asset, index) => {
+    console.log(
+      `Asset ${index + 1}: ${asset}`
+    );
+  });
 
   console.log("");
   console.log(
@@ -126,13 +168,13 @@ async function main() {
   );
 
   console.log(
-    "Official Source Structure Inspection: PASS"
+    "Official Hero Parser Test: PASS"
   );
 }
 
 main().catch((error) => {
   console.error(
-    "Official source inspection failed:"
+    "Official hero parser failed:"
   );
 
   console.error(error.message);
