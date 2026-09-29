@@ -10,8 +10,11 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 }
 
-const OFFICIAL_HERO_URL =
-  "https://world.honorofkings.com/zlkdatasys/ip/hero/en/117.html";
+const OFFICIAL_HERO_LIST_URL =
+  "https://world.honorofkings.com/ipworld/en/m/champion.html";
+
+const OFFICIAL_HERO_BASE =
+  "https://world.honorofkings.com";
 
 const headers = {
   apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -52,23 +55,34 @@ async function supabase(path, options = {}) {
   }
 }
 
-function parseHeroVariables(html) {
-  const match = html.match(
-    /var\s+heroId\s*=\s*"([^"]*)"\s*,\s*heroName\s*=\s*"([^"]*)"\s*,\s*heroCh\s*=\s*"([^"]*)"\s*,\s*heroHeight\s*=\s*"([^"]*)"/i
+async function fetchOfficial(url) {
+  const response = await fetch(
+    url,
+    {
+      headers: {
+        "User-Agent":
+          "HoKStation-Official-Sync/1.0",
+        "Accept":
+          "text/html,application/xhtml+xml",
+      },
+    }
   );
 
-  if (!match) {
+  if (!response.ok) {
     throw new Error(
-      "Could not find official hero variables."
+      `Official source HTTP ${response.status}: ${url}`
     );
   }
 
-  return {
-    id: match[1].trim(),
-    name: match[2].trim(),
-    chineseName: match[3].trim(),
-    height: match[4].trim(),
-  };
+  const html = await response.text();
+
+  if (html.length < 5000) {
+    throw new Error(
+      `Official source response unexpectedly small: ${url}`
+    );
+  }
+
+  return html;
 }
 
 function createSlug(name) {
@@ -89,14 +103,78 @@ function createSlug(name) {
   return slug;
 }
 
-function validateHero(hero) {
-  if (!hero.id) {
+function parseHeroVariables(html) {
+  const match = html.match(
+    /var\s+heroId\s*=\s*"([^"]*)"\s*,\s*heroName\s*=\s*"([^"]*)"\s*,\s*heroCh\s*=\s*"([^"]*)"\s*,\s*heroHeight\s*=\s*"([^"]*)"/i
+  );
+
+  if (!match) {
     throw new Error(
-      "Official hero data is missing hero ID."
+      "Could not find official hero variables."
     );
   }
 
+  const hero = {
+    id: match[1].trim(),
+    name: match[2].trim(),
+    chineseName: match[3].trim(),
+    height: match[4].trim(),
+  };
+
   if (!/^\d+$/.test(hero.id)) {
+    throw new Error(
+      `Invalid official hero ID: "${hero.id}"`
+    );
+  }
+
+  if (!hero.name) {
+    throw new Error(
+      `Official hero ${hero.id} has no name.`
+    );
+  }
+
+  return hero;
+}
+
+function findOfficialHeroUrls(html) {
+  const urls = new Map();
+
+  /*
+   * Official detail-page format:
+   *
+   * /zlkdatasys/ip/hero/en/117.html
+   *
+   * We accept:
+   * - absolute URLs
+   * - root-relative URLs
+   * - URLs with additional query/hash
+   */
+
+  const regex =
+    /(?:https?:\/\/world\.honorofkings\.com)?\/zlkdatasys\/ip\/hero\/en\/(\d+)\.html(?:[?#][^"'<> ]*)?/gi;
+
+  for (const match of html.matchAll(regex)) {
+    const id = match[1];
+
+    if (!urls.has(id)) {
+      urls.set(
+        id,
+        `${OFFICIAL_HERO_BASE}/zlkdatasys/ip/hero/en/${id}.html`
+      );
+    }
+  }
+
+  return [...urls.values()];
+}
+
+function validateHeroRecord(hero) {
+  if (!hero.id) {
+    throw new Error(
+      "Hero record is missing ID."
+    );
+  }
+
+  if (!/^\d+$/.test(String(hero.id))) {
     throw new Error(
       `Invalid hero ID: "${hero.id}"`
     );
@@ -104,9 +182,57 @@ function validateHero(hero) {
 
   if (!hero.name) {
     throw new Error(
-      "Official hero data is missing hero name."
+      `Hero ${hero.id} is missing name.`
     );
   }
+
+  if (!hero.slug) {
+    throw new Error(
+      `Hero ${hero.id} is missing slug.`
+    );
+  }
+}
+
+async function mapWithConcurrency(
+  items,
+  limit,
+  worker
+) {
+  const results = new Array(
+    items.length
+  );
+
+  let nextIndex = 0;
+
+  async function runner() {
+    while (true) {
+      const index = nextIndex++;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      results[index] =
+        await worker(
+          items[index],
+          index
+        );
+    }
+  }
+
+  const workerCount = Math.min(
+    limit,
+    items.length
+  );
+
+  await Promise.all(
+    Array.from(
+      { length: workerCount },
+      () => runner()
+    )
+  );
+
+  return results;
 }
 
 async function main() {
@@ -115,238 +241,356 @@ async function main() {
   );
 
   console.log(
-    "Official Hero DB Write Test"
+    "Full Official Hero Sync"
   );
+
+  // ==================================================
+  // 1. Download official hero list
+  // ==================================================
 
   console.log("");
   console.log(
-    "=== OFFICIAL SOURCE ==="
+    "=== OFFICIAL HERO LIST ==="
   );
 
-  console.log(OFFICIAL_HERO_URL);
+  console.log(
+    OFFICIAL_HERO_LIST_URL
+  );
 
-  // --------------------------------------------------
-  // 1. Download official hero page
-  // --------------------------------------------------
+  const listHtml =
+    await fetchOfficial(
+      OFFICIAL_HERO_LIST_URL
+    );
 
-  const response = await fetch(
-    OFFICIAL_HERO_URL,
-    {
-      headers: {
-        "User-Agent":
-          "HoKStation-Official-Sync/1.0",
-        "Accept":
-          "text/html,application/xhtml+xml",
-      },
+  console.log(
+    `Official hero list downloaded: ${listHtml.length} characters`
+  );
+
+  const heroUrls =
+    findOfficialHeroUrls(listHtml);
+
+  console.log(
+    `Official hero URLs detected: ${heroUrls.length}`
+  );
+
+  if (heroUrls.length === 0) {
+    throw new Error(
+      "No official hero detail URLs detected. Database write skipped."
+    );
+  }
+
+  // ==================================================
+  // 2. Download every official hero page
+  // ==================================================
+
+  console.log("");
+  console.log(
+    "=== PARSING OFFICIAL HEROES ==="
+  );
+
+  const parsedHeroes =
+    await mapWithConcurrency(
+      heroUrls,
+      6,
+      async (url, index) => {
+        const html =
+          await fetchOfficial(url);
+
+        const hero =
+          parseHeroVariables(html);
+
+        const record = {
+          id: hero.id,
+          name: hero.name,
+          slug: createSlug(hero.name),
+        };
+
+        validateHeroRecord(record);
+
+        console.log(
+          `[${index + 1}/${heroUrls.length}] ${record.id} | ${record.name} | ${record.slug}`
+        );
+
+        return record;
+      }
+    );
+
+  // ==================================================
+  // 3. Remove duplicate IDs
+  // ==================================================
+
+  const heroesById =
+    new Map();
+
+  for (const hero of parsedHeroes) {
+    const id = String(hero.id);
+
+    if (heroesById.has(id)) {
+      const previous =
+        heroesById.get(id);
+
+      if (
+        previous.name !== hero.name ||
+        previous.slug !== hero.slug
+      ) {
+        throw new Error(
+          `Conflicting data for hero ID ${id}.`
+        );
+      }
+
+      continue;
     }
-  );
 
-  console.log(
-    `Official hero HTTP status: ${response.status}`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Official hero page returned HTTP ${response.status}`
+    heroesById.set(
+      id,
+      hero
     );
   }
 
-  const html = await response.text();
+  const heroes =
+    [...heroesById.values()];
 
-  console.log(
-    `Official hero page downloaded: ${html.length} characters`
-  );
-
-  if (html.length < 5000) {
+  if (heroes.length === 0) {
     throw new Error(
-      "Official hero page response is unexpectedly small."
+      "No valid official heroes were parsed. Database write skipped."
     );
   }
 
-  // --------------------------------------------------
-  // 2. Parse official hero data
-  // --------------------------------------------------
+  // ==================================================
+  // 4. Check duplicate slugs
+  // ==================================================
 
-  const hero = parseHeroVariables(html);
+  const slugs =
+    new Map();
 
-  validateHero(hero);
+  for (const hero of heroes) {
+    if (slugs.has(hero.slug)) {
+      const previous =
+        slugs.get(hero.slug);
 
-  const slug = createSlug(hero.name);
-
-  console.log("");
-  console.log(
-    "=== OFFICIAL HERO DATA ==="
-  );
-
-  console.log(`Hero ID: ${hero.id}`);
-  console.log(`Hero Name: ${hero.name}`);
-  console.log(
-    `Chinese Name: ${
-      hero.chineseName || "Not provided"
-    }`
-  );
-  console.log(`Height: ${hero.height}`);
-  console.log(`Generated Slug: ${slug}`);
-
-  // --------------------------------------------------
-  // 3. Prepare database record
-  // --------------------------------------------------
-
-  const heroRecord = {
-    id: hero.id,
-    name: hero.name,
-    slug: slug,
-  };
-
-  console.log("");
-  console.log(
-    "=== DATABASE WRITE PAYLOAD ==="
-  );
-
-  console.log(
-    JSON.stringify(heroRecord, null, 2)
-  );
-
-  // --------------------------------------------------
-  // 4. Upsert hero into public.heroes
-  // --------------------------------------------------
-
-  console.log("");
-  console.log(
-    "Writing hero to public.heroes..."
-  );
-
-  const result = await supabase(
-    "heroes?on_conflict=id",
-    {
-      method: "POST",
-      headers: {
-        Prefer:
-          "resolution=merge-duplicates,return=representation",
-      },
-      body: JSON.stringify(heroRecord),
+      throw new Error(
+        `Duplicate slug "${hero.slug}" found for heroes ${previous.id} (${previous.name}) and ${hero.id} (${hero.name}).`
+      );
     }
-  );
 
-  if (
-    !Array.isArray(result) ||
-    result.length === 0
-  ) {
-    throw new Error(
-      "Database write returned no hero rows."
-    );
-  }
-
-  const savedHero = result[0];
-
-  console.log(
-    "Database write request completed."
-  );
-
-  console.log("");
-  console.log(
-    "=== DATABASE RESPONSE ==="
-  );
-
-  console.log(
-    `Database hero ID: ${savedHero.id}`
-  );
-
-  console.log(
-    `Database hero name: ${savedHero.name}`
-  );
-
-  console.log(
-    `Database hero slug: ${savedHero.slug}`
-  );
-
-  // --------------------------------------------------
-  // 5. Verify returned data
-  // --------------------------------------------------
-
-  if (
-    String(savedHero.id) !==
-    String(hero.id)
-  ) {
-    throw new Error(
-      `Database ID mismatch. Expected ${hero.id}, received ${savedHero.id}.`
-    );
-  }
-
-  if (
-    savedHero.name !== hero.name
-  ) {
-    throw new Error(
-      `Database name mismatch. Expected ${hero.name}, received ${savedHero.name}.`
-    );
-  }
-
-  if (
-    savedHero.slug !== slug
-  ) {
-    throw new Error(
-      `Database slug mismatch. Expected ${slug}, received ${savedHero.slug}.`
+    slugs.set(
+      hero.slug,
+      hero
     );
   }
 
   console.log("");
   console.log(
-    "Returned database data verified."
+    "=== PARSER RESULT ==="
   );
 
-  // --------------------------------------------------
-  // 6. Read the hero back from Supabase
-  // --------------------------------------------------
+  console.log(
+    `Hero URLs: ${heroUrls.length}`
+  );
+
+  console.log(
+    `Heroes parsed: ${parsedHeroes.length}`
+  );
+
+  console.log(
+    `Unique heroes: ${heroes.length}`
+  );
+
+  // ==================================================
+  // 5. Show a small sample before DB write
+  // ==================================================
+
+  console.log("");
+  console.log(
+    "=== HERO SAMPLE ==="
+  );
+
+  heroes
+    .slice(0, 10)
+    .forEach((hero, index) => {
+      console.log(
+        `${index + 1}. ${hero.id} | ${hero.name} | ${hero.slug}`
+      );
+    });
+
+  if (heroes.length > 10) {
+    console.log(
+      `... ${heroes.length - 10} more heroes`
+    );
+  }
+
+  // ==================================================
+  // 6. Write all heroes to Supabase
+  // ==================================================
+
+  console.log("");
+  console.log(
+    "=== DATABASE WRITE ==="
+  );
+
+  console.log(
+    `Upserting ${heroes.length} heroes into public.heroes...`
+  );
+
+  const result =
+    await supabase(
+      "heroes?on_conflict=id",
+      {
+        method: "POST",
+        headers: {
+          Prefer:
+            "resolution=merge-duplicates,return=representation",
+        },
+        body: JSON.stringify(
+          heroes
+        ),
+      }
+    );
+
+  if (!Array.isArray(result)) {
+    throw new Error(
+      "Database write did not return an array."
+    );
+  }
+
+  if (
+    result.length !== heroes.length
+  ) {
+    throw new Error(
+      `Database returned ${result.length} rows, expected ${heroes.length}.`
+    );
+  }
+
+  console.log(
+    `Database rows returned: ${result.length}`
+  );
+
+  // ==================================================
+  // 7. Verify returned records
+  // ==================================================
+
+  const expectedById =
+    new Map(
+      heroes.map((hero) => [
+        String(hero.id),
+        hero,
+      ])
+    );
+
+  for (const savedHero of result) {
+    const expected =
+      expectedById.get(
+        String(savedHero.id)
+      );
+
+    if (!expected) {
+      throw new Error(
+        `Unexpected hero returned by database: ${savedHero.id}`
+      );
+    }
+
+    if (
+      savedHero.name !==
+      expected.name
+    ) {
+      throw new Error(
+        `Name mismatch for hero ${savedHero.id}: expected "${expected.name}", received "${savedHero.name}".`
+      );
+    }
+
+    if (
+      savedHero.slug !==
+      expected.slug
+    ) {
+      throw new Error(
+        `Slug mismatch for hero ${savedHero.id}: expected "${expected.slug}", received "${savedHero.slug}".`
+      );
+    }
+  }
+
+  console.log(
+    "Returned database records verified."
+  );
+
+  // ==================================================
+  // 8. Read-back verification
+  // ==================================================
 
   console.log("");
   console.log(
     "=== DATABASE READ-BACK TEST ==="
   );
 
-  const verifyResult = await supabase(
-    `heroes?id=eq.${encodeURIComponent(hero.id)}&select=id,name,slug`,
-    {
-      method: "GET",
+  const verifyResult =
+    await supabase(
+      "heroes?select=id,name,slug",
+      {
+        method: "GET",
+      }
+    );
+
+  if (
+    !Array.isArray(
+      verifyResult
+    )
+  ) {
+    throw new Error(
+      "Database read-back did not return an array."
+    );
+  }
+
+  const databaseById =
+    new Map(
+      verifyResult.map(
+        (hero) => [
+          String(hero.id),
+          hero,
+        ]
+      )
+    );
+
+  let verifiedCount = 0;
+
+  for (const expected of heroes) {
+    const actual =
+      databaseById.get(
+        String(expected.id)
+      );
+
+    if (!actual) {
+      throw new Error(
+        `Hero ${expected.id} (${expected.name}) was not found during read-back.`
+      );
     }
-  );
 
-  if (
-    !Array.isArray(verifyResult) ||
-    verifyResult.length !== 1
-  ) {
-    throw new Error(
-      `Database read-back expected 1 hero, received ${
-        Array.isArray(verifyResult)
-          ? verifyResult.length
-          : 0
-      }.`
-    );
+    if (
+      actual.name !==
+      expected.name
+    ) {
+      throw new Error(
+        `Read-back name mismatch for hero ${expected.id}.`
+      );
+    }
+
+    if (
+      actual.slug !==
+      expected.slug
+    ) {
+      throw new Error(
+        `Read-back slug mismatch for hero ${expected.id}.`
+      );
+    }
+
+    verifiedCount++;
   }
 
-  const verifiedHero = verifyResult[0];
-
   console.log(
-    `Verified ID: ${verifiedHero.id}`
+    `Heroes verified from database: ${verifiedCount}`
   );
 
-  console.log(
-    `Verified name: ${verifiedHero.name}`
-  );
-
-  console.log(
-    `Verified slug: ${verifiedHero.slug}`
-  );
-
-  if (
-    String(verifiedHero.id) !==
-      String(hero.id) ||
-    verifiedHero.name !== hero.name ||
-    verifiedHero.slug !== slug
-  ) {
-    throw new Error(
-      "Database read-back verification failed."
-    );
-  }
+  // ==================================================
+  // 9. Final result
+  // ==================================================
 
   console.log("");
   console.log(
@@ -354,15 +598,19 @@ async function main() {
   );
 
   console.log(
-    "Official source: PASS"
+    "Official hero list: PASS"
   );
 
   console.log(
-    "Hero parser: PASS"
+    "Official hero parsing: PASS"
   );
 
   console.log(
-    "Database write: PASS"
+    `Heroes parsed: ${heroes.length}`
+  );
+
+  console.log(
+    "Database bulk upsert: PASS"
   );
 
   console.log(
@@ -371,17 +619,19 @@ async function main() {
 
   console.log("");
   console.log(
-    "Official Hero DB Write Test: PASS"
+    "FULL OFFICIAL HERO SYNC: PASS"
   );
 }
 
 main().catch((error) => {
   console.error("");
   console.error(
-    "Official hero DB write failed:"
+    "Full official hero sync failed:"
   );
 
-  console.error(error.message);
+  console.error(
+    error.message
+  );
 
   process.exit(1);
 });
