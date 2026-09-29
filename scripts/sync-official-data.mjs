@@ -187,6 +187,44 @@ async function runPool(ids) {
   return results;
 }
 
+/*
+ * Official source can contain multiple hero pages
+ * with the same display name.
+ *
+ * Example:
+ * 511 - ATA
+ * 556 - ATA
+ *
+ * Slugs must therefore remain unique without
+ * deleting either hero.
+ */
+function makeUniqueSlugs(heroes) {
+  const used = new Set();
+
+  for (const hero of heroes) {
+    const baseSlug = createSlug(hero.name);
+
+    if (!baseSlug) {
+      throw new Error(
+        `Could not create slug for hero ${hero.id}.`
+      );
+    }
+
+    let slug = baseSlug;
+
+    if (used.has(slug)) {
+      slug = `${baseSlug}-${hero.id}`;
+    }
+
+    while (used.has(slug)) {
+      slug = `${baseSlug}-${hero.id}-${used.size}`;
+    }
+
+    hero.slug = slug;
+    used.add(slug);
+  }
+}
+
 function validateHeroes(heroes) {
   if (!Array.isArray(heroes)) {
     throw new Error(
@@ -314,7 +352,11 @@ async function verifyHeroes(heroes) {
   return result;
 }
 
-async function logSync(status, details) {
+/*
+ * sync_jobs does not have a "details" column,
+ * so only write columns known to exist.
+ */
+async function logSync(status) {
   try {
     await supabase(
       "sync_jobs",
@@ -327,7 +369,6 @@ async function logSync(status, details) {
         body: JSON.stringify({
           job_type: "OFFICIAL_HERO_SYNC",
           status,
-          details,
         }),
       }
     );
@@ -380,6 +421,11 @@ async function main() {
     `Official heroes discovered: ${heroes.length}`
   );
 
+  /*
+   * Resolve duplicate names before validation.
+   */
+  makeUniqueSlugs(heroes);
+
   validateHeroes(heroes);
 
   console.log("");
@@ -429,6 +475,10 @@ async function main() {
   );
 
   console.log(
+    "Unique slug generation: PASS"
+  );
+
+  console.log(
     "Database write: PASS"
   );
 
@@ -441,10 +491,7 @@ async function main() {
     "HoKStation Official Hero Sync: PASS"
   );
 
-  await logSync(
-    "SUCCESS",
-    `Official hero sync completed. ${heroes.length} heroes discovered and verified.`
-  );
+  await logSync("SUCCESS");
 }
 
 main().catch(async (error) => {
@@ -463,10 +510,7 @@ main().catch(async (error) => {
     error.message
   );
 
-  await logSync(
-    "FAILED",
-    error.message
-  ).catch(() => {});
+  await logSync("FAILED").catch(() => {});
 
   process.exit(1);
 });
