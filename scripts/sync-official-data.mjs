@@ -14,7 +14,7 @@ const OFFICIAL_HERO_LIST_URL =
   "https://world.honorofkings.com/ipworld/en/m/champion.html";
 
 const OFFICIAL_HERO_BASE =
-  "https://world.honorofkings.com";
+  "https://world.honorofkings.com/zlkdatasys/ip/hero/en/";
 
 const headers = {
   apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -70,7 +70,7 @@ async function fetchOfficial(url) {
 
   if (!response.ok) {
     throw new Error(
-      `Official source HTTP ${response.status}: ${url}`
+      `Official source returned HTTP ${response.status}: ${url}`
     );
   }
 
@@ -78,7 +78,7 @@ async function fetchOfficial(url) {
 
   if (html.length < 5000) {
     throw new Error(
-      `Official source response unexpectedly small: ${url}`
+      `Official page is unexpectedly small: ${url}`
     );
   }
 
@@ -114,82 +114,93 @@ function parseHeroVariables(html) {
     );
   }
 
-  const hero = {
+  return {
     id: match[1].trim(),
     name: match[2].trim(),
     chineseName: match[3].trim(),
     height: match[4].trim(),
   };
-
-  if (!/^\d+$/.test(hero.id)) {
-    throw new Error(
-      `Invalid official hero ID: "${hero.id}"`
-    );
-  }
-
-  if (!hero.name) {
-    throw new Error(
-      `Official hero ${hero.id} has no name.`
-    );
-  }
-
-  return hero;
 }
 
-function findOfficialHeroUrls(html) {
-  const urls = new Map();
+/*
+ * The official champion index does not reliably expose
+ * direct hero .html URLs in its static HTML.
+ *
+ * Therefore we collect numeric hero IDs from the official
+ * page and verify every candidate by opening the official
+ * hero detail page.
+ */
+function findHeroIds(html) {
+  const ids = new Set();
 
-  /*
-   * Official detail-page format:
-   *
-   * /zlkdatasys/ip/hero/en/117.html
-   *
-   * We accept:
-   * - absolute URLs
-   * - root-relative URLs
-   * - URLs with additional query/hash
-   */
+  const patterns = [
+    /heroId\s*[:=]\s*["']?(\d{1,6})["']?/gi,
+    /hero_id\s*[:=]\s*["']?(\d{1,6})["']?/gi,
+    /hero-id\s*[:=]\s*["']?(\d{1,6})["']?/gi,
+    /hero\/(\d{1,6})/gi,
+    /heroId=(\d{1,6})/gi,
+  ];
 
-  const regex =
-    /(?:https?:\/\/world\.honorofkings\.com)?\/zlkdatasys\/ip\/hero\/en\/(\d+)\.html(?:[?#][^"'<> ]*)?/gi;
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      const id = match[1];
 
-  for (const match of html.matchAll(regex)) {
-    const id = match[1];
-
-    if (!urls.has(id)) {
-      urls.set(
-        id,
-        `${OFFICIAL_HERO_BASE}/zlkdatasys/ip/hero/en/${id}.html`
-      );
+      if (id) {
+        ids.add(id);
+      }
     }
   }
 
-  return [...urls.values()];
+  return [...ids];
 }
 
-function validateHeroRecord(hero) {
+function validateHero(hero) {
   if (!hero.id) {
     throw new Error(
-      "Hero record is missing ID."
+      "Official hero is missing ID."
     );
   }
 
-  if (!/^\d+$/.test(String(hero.id))) {
+  if (!/^\d+$/.test(hero.id)) {
     throw new Error(
-      `Invalid hero ID: "${hero.id}"`
+      `Invalid hero ID: ${hero.id}`
     );
   }
 
   if (!hero.name) {
     throw new Error(
-      `Hero ${hero.id} is missing name.`
+      `Official hero ${hero.id} is missing name.`
     );
   }
+}
 
-  if (!hero.slug) {
-    throw new Error(
-      `Hero ${hero.id} is missing slug.`
-    );
+async function tryHero(id) {
+  const url =
+    `${OFFICIAL_HERO_BASE}${id}.html`;
+
+  try {
+    const html =
+      await fetchOfficial(url);
+
+    const hero =
+      parseHeroVariables(html);
+
+    validateHero(hero);
+
+    if (
+      String(hero.id) !==
+      String(id)
+    ) {
+      return null;
+    }
+
+    return {
+      id: hero.id,
+      name: hero.name,
+      slug: createSlug(hero.name),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -198,9 +209,7 @@ async function mapWithConcurrency(
   limit,
   worker
 ) {
-  const results = new Array(
-    items.length
-  );
+  const results = new Array(items.length);
 
   let nextIndex = 0;
 
@@ -213,26 +222,127 @@ async function mapWithConcurrency(
       }
 
       results[index] =
-        await worker(
-          items[index],
-          index
-        );
+        await worker(items[index], index);
     }
   }
 
-  const workerCount = Math.min(
-    limit,
-    items.length
+  const workers = Array.from(
+    {
+      length: Math.min(
+        limit,
+        items.length
+      ),
+    },
+    () => runner()
   );
 
-  await Promise.all(
-    Array.from(
-      { length: workerCount },
-      () => runner()
-    )
-  );
+  await Promise.all(workers);
 
   return results;
+}
+
+async function upsertInBatches(
+  records,
+  batchSize = 50
+) {
+  for (
+    let i = 0;
+    i < records.length;
+    i += batchSize
+  ) {
+    const batch =
+      records.slice(
+        i,
+        i + batchSize
+      );
+
+    console.log(
+      `Writing heroes ${i + 1}-${Math.min(
+        i + batchSize,
+        records.length
+      )} of ${records.length}...`
+    );
+
+    const result =
+      await supabase(
+        "heroes?on_conflict=id",
+        {
+          method: "POST",
+          headers: {
+            Prefer:
+              "resolution=merge-duplicates,return=minimal",
+          },
+          body:
+            JSON.stringify(batch),
+        }
+      );
+
+    void result;
+  }
+}
+
+async function verifyHeroes(records) {
+  const saved =
+    await supabase(
+      "heroes?select=id,name,slug",
+      {
+        method: "GET",
+      }
+    );
+
+  if (!Array.isArray(saved)) {
+    throw new Error(
+      "Could not read heroes from database."
+    );
+  }
+
+  const byId =
+    new Map(
+      saved.map((hero) => [
+        String(hero.id),
+        hero,
+      ])
+    );
+
+  const missing = [];
+  const mismatched = [];
+
+  for (const hero of records) {
+    const databaseHero =
+      byId.get(
+        String(hero.id)
+      );
+
+    if (!databaseHero) {
+      missing.push(hero.id);
+      continue;
+    }
+
+    if (
+      databaseHero.name !==
+        hero.name ||
+      databaseHero.slug !==
+        hero.slug
+    ) {
+      mismatched.push(
+        `${hero.id}:${hero.name}`
+      );
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Database verification missing ${missing.length} heroes: ${missing.slice(0, 10).join(", ")}`
+    );
+  }
+
+  if (mismatched.length > 0) {
+    throw new Error(
+      `Database verification found mismatches: ${mismatched.slice(0, 10).join(", ")}`
+    );
+  }
+
+  return saved.length;
 }
 
 async function main() {
@@ -241,14 +351,15 @@ async function main() {
   );
 
   console.log(
-    "Full Official Hero Sync"
+    "FULL OFFICIAL HERO SYNC"
   );
 
-  // ==================================================
-  // 1. Download official hero list
-  // ==================================================
-
   console.log("");
+
+  /*
+   * 1. Download official champion index.
+   */
+
   console.log(
     "=== OFFICIAL HERO LIST ==="
   );
@@ -266,333 +377,183 @@ async function main() {
     `Official hero list downloaded: ${listHtml.length} characters`
   );
 
-  const heroUrls =
-    findOfficialHeroUrls(listHtml);
+  /*
+   * 2. Discover candidate IDs.
+   */
+
+  const candidateIds =
+    findHeroIds(listHtml);
 
   console.log(
-    `Official hero URLs detected: ${heroUrls.length}`
+    `Hero ID candidates detected: ${candidateIds.length}`
   );
 
-  if (heroUrls.length === 0) {
+  if (
+    candidateIds.length === 0
+  ) {
     throw new Error(
-      "No official hero detail URLs detected. Database write skipped."
+      "No hero IDs detected from official champion list. Database write skipped."
     );
   }
 
-  // ==================================================
-  // 2. Download every official hero page
-  // ==================================================
+  /*
+   * 3. Verify candidates against
+   *    real official hero pages.
+   */
 
   console.log("");
+
   console.log(
-    "=== PARSING OFFICIAL HEROES ==="
+    "=== VERIFYING OFFICIAL HERO PAGES ==="
   );
 
-  const parsedHeroes =
+  const parsed =
     await mapWithConcurrency(
-      heroUrls,
+      candidateIds,
       6,
-      async (url, index) => {
-        const html =
-          await fetchOfficial(url);
-
+      async (id, index) => {
         const hero =
-          parseHeroVariables(html);
+          await tryHero(id);
 
-        const record = {
-          id: hero.id,
-          name: hero.name,
-          slug: createSlug(hero.name),
-        };
+        if (hero) {
+          console.log(
+            `[${index + 1}/${candidateIds.length}] PASS ${hero.id} ${hero.name}`
+          );
+        }
 
-        validateHeroRecord(record);
-
-        console.log(
-          `[${index + 1}/${heroUrls.length}] ${record.id} | ${record.name} | ${record.slug}`
-        );
-
-        return record;
+        return hero;
       }
     );
 
-  // ==================================================
-  // 3. Remove duplicate IDs
-  // ==================================================
+  const heroes =
+    parsed.filter(Boolean);
 
-  const heroesById =
+  console.log("");
+
+  console.log(
+    `Official hero pages verified: ${heroes.length}`
+  );
+
+  if (heroes.length === 0) {
+    throw new Error(
+      "No valid official hero detail pages were verified. Database write skipped."
+    );
+  }
+
+  /*
+   * 4. Deduplicate by ID.
+   */
+
+  const uniqueById =
     new Map();
 
-  for (const hero of parsedHeroes) {
-    const id = String(hero.id);
-
-    if (heroesById.has(id)) {
-      const previous =
-        heroesById.get(id);
-
-      if (
-        previous.name !== hero.name ||
-        previous.slug !== hero.slug
-      ) {
-        throw new Error(
-          `Conflicting data for hero ID ${id}.`
-        );
-      }
-
-      continue;
-    }
-
-    heroesById.set(
-      id,
+  for (const hero of heroes) {
+    uniqueById.set(
+      String(hero.id),
       hero
     );
   }
 
-  const heroes =
-    [...heroesById.values()];
+  const uniqueHeroes =
+    [...uniqueById.values()];
 
-  if (heroes.length === 0) {
-    throw new Error(
-      "No valid official heroes were parsed. Database write skipped."
-    );
-  }
+  /*
+   * 5. Detect duplicate slugs.
+   */
 
-  // ==================================================
-  // 4. Check duplicate slugs
-  // ==================================================
-
-  const slugs =
+  const slugOwners =
     new Map();
 
-  for (const hero of heroes) {
-    if (slugs.has(hero.slug)) {
-      const previous =
-        slugs.get(hero.slug);
+  for (const hero of uniqueHeroes) {
+    const existing =
+      slugOwners.get(
+        hero.slug
+      );
 
+    if (
+      existing &&
+      existing.id !== hero.id
+    ) {
       throw new Error(
-        `Duplicate slug "${hero.slug}" found for heroes ${previous.id} (${previous.name}) and ${hero.id} (${hero.name}).`
+        `Duplicate hero slug "${hero.slug}" for IDs ${existing.id} and ${hero.id}. Database write skipped.`
       );
     }
 
-    slugs.set(
+    slugOwners.set(
       hero.slug,
       hero
     );
   }
 
-  console.log("");
   console.log(
-    "=== PARSER RESULT ==="
+    `Unique official heroes: ${uniqueHeroes.length}`
   );
 
-  console.log(
-    `Hero URLs: ${heroUrls.length}`
-  );
-
-  console.log(
-    `Heroes parsed: ${parsedHeroes.length}`
-  );
-
-  console.log(
-    `Unique heroes: ${heroes.length}`
-  );
-
-  // ==================================================
-  // 5. Show a small sample before DB write
-  // ==================================================
+  /*
+   * 6. Show sample.
+   */
 
   console.log("");
+
   console.log(
     "=== HERO SAMPLE ==="
   );
 
-  heroes
-    .slice(0, 10)
-    .forEach((hero, index) => {
-      console.log(
-        `${index + 1}. ${hero.id} | ${hero.name} | ${hero.slug}`
-      );
-    });
-
-  if (heroes.length > 10) {
+  for (
+    const hero of uniqueHeroes.slice(
+      0,
+      10
+    )
+  ) {
     console.log(
-      `... ${heroes.length - 10} more heroes`
+      `${hero.id} | ${hero.name} | ${hero.slug}`
     );
   }
 
-  // ==================================================
-  // 6. Write all heroes to Supabase
-  // ==================================================
+  /*
+   * 7. Write to Supabase.
+   */
 
   console.log("");
+
   console.log(
     "=== DATABASE WRITE ==="
   );
 
-  console.log(
-    `Upserting ${heroes.length} heroes into public.heroes...`
+  await upsertInBatches(
+    uniqueHeroes,
+    50
   );
 
-  const result =
-    await supabase(
-      "heroes?on_conflict=id",
-      {
-        method: "POST",
-        headers: {
-          Prefer:
-            "resolution=merge-duplicates,return=representation",
-        },
-        body: JSON.stringify(
-          heroes
-        ),
-      }
-    );
-
-  if (!Array.isArray(result)) {
-    throw new Error(
-      "Database write did not return an array."
-    );
-  }
-
-  if (
-    result.length !== heroes.length
-  ) {
-    throw new Error(
-      `Database returned ${result.length} rows, expected ${heroes.length}.`
-    );
-  }
-
   console.log(
-    `Database rows returned: ${result.length}`
+    "All official heroes written successfully."
   );
 
-  // ==================================================
-  // 7. Verify returned records
-  // ==================================================
-
-  const expectedById =
-    new Map(
-      heroes.map((hero) => [
-        String(hero.id),
-        hero,
-      ])
-    );
-
-  for (const savedHero of result) {
-    const expected =
-      expectedById.get(
-        String(savedHero.id)
-      );
-
-    if (!expected) {
-      throw new Error(
-        `Unexpected hero returned by database: ${savedHero.id}`
-      );
-    }
-
-    if (
-      savedHero.name !==
-      expected.name
-    ) {
-      throw new Error(
-        `Name mismatch for hero ${savedHero.id}: expected "${expected.name}", received "${savedHero.name}".`
-      );
-    }
-
-    if (
-      savedHero.slug !==
-      expected.slug
-    ) {
-      throw new Error(
-        `Slug mismatch for hero ${savedHero.id}: expected "${expected.slug}", received "${savedHero.slug}".`
-      );
-    }
-  }
-
-  console.log(
-    "Returned database records verified."
-  );
-
-  // ==================================================
-  // 8. Read-back verification
-  // ==================================================
+  /*
+   * 8. Read back and verify.
+   */
 
   console.log("");
-  console.log(
-    "=== DATABASE READ-BACK TEST ==="
-  );
-
-  const verifyResult =
-    await supabase(
-      "heroes?select=id,name,slug",
-      {
-        method: "GET",
-      }
-    );
-
-  if (
-    !Array.isArray(
-      verifyResult
-    )
-  ) {
-    throw new Error(
-      "Database read-back did not return an array."
-    );
-  }
-
-  const databaseById =
-    new Map(
-      verifyResult.map(
-        (hero) => [
-          String(hero.id),
-          hero,
-        ]
-      )
-    );
-
-  let verifiedCount = 0;
-
-  for (const expected of heroes) {
-    const actual =
-      databaseById.get(
-        String(expected.id)
-      );
-
-    if (!actual) {
-      throw new Error(
-        `Hero ${expected.id} (${expected.name}) was not found during read-back.`
-      );
-    }
-
-    if (
-      actual.name !==
-      expected.name
-    ) {
-      throw new Error(
-        `Read-back name mismatch for hero ${expected.id}.`
-      );
-    }
-
-    if (
-      actual.slug !==
-      expected.slug
-    ) {
-      throw new Error(
-        `Read-back slug mismatch for hero ${expected.id}.`
-      );
-    }
-
-    verifiedCount++;
-  }
 
   console.log(
-    `Heroes verified from database: ${verifiedCount}`
+    "=== DATABASE READ-BACK ==="
   );
 
-  // ==================================================
-  // 9. Final result
-  // ==================================================
+  const databaseCount =
+    await verifyHeroes(
+      uniqueHeroes
+    );
+
+  console.log(
+    `Database heroes available: ${databaseCount}`
+  );
+
+  /*
+   * 9. Final result.
+   */
 
   console.log("");
+
   console.log(
     "=== FINAL RESULT ==="
   );
@@ -602,15 +563,19 @@ async function main() {
   );
 
   console.log(
-    "Official hero parsing: PASS"
+    "Official hero discovery: PASS"
   );
 
   console.log(
-    `Heroes parsed: ${heroes.length}`
+    "Official hero page verification: PASS"
   );
 
   console.log(
-    "Database bulk upsert: PASS"
+    "Hero parsing: PASS"
+  );
+
+  console.log(
+    "Database write: PASS"
   );
 
   console.log(
@@ -618,20 +583,24 @@ async function main() {
   );
 
   console.log("");
+
   console.log(
-    "FULL OFFICIAL HERO SYNC: PASS"
+    `FULL OFFICIAL HERO SYNC: PASS — ${uniqueHeroes.length} heroes`
   );
 }
 
-main().catch((error) => {
-  console.error("");
-  console.error(
-    "Full official hero sync failed:"
-  );
+main().catch(
+  (error) => {
+    console.error("");
 
-  console.error(
-    error.message
-  );
+    console.error(
+      "Full official hero sync failed:"
+    );
 
-  process.exit(1);
-});
+    console.error(
+      error.message
+    );
+
+    process.exit(1);
+  }
+);
