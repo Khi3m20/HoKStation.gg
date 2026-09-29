@@ -13,21 +13,33 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 const OFFICIAL_HERO_URL =
   "https://world.honorofkings.com/zlkdatasys/ip/hero/en/117.html";
 
-function decodeHtml(value) {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
-}
+const headers = {
+  apikey: SUPABASE_SERVICE_ROLE_KEY,
+  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+  "Content-Type": "application/json",
+};
 
-function cleanText(value) {
-  return decodeHtml(value)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+async function supabase(path, options = {}) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${path}`,
+    {
+      ...options,
+      headers: {
+        ...headers,
+        ...(options.headers || {}),
+      },
+    }
+  );
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Supabase ${response.status}: ${text}`
+    );
+  }
+
+  return text ? JSON.parse(text) : null;
 }
 
 function parseHeroVariables(html) {
@@ -49,49 +61,18 @@ function parseHeroVariables(html) {
   };
 }
 
-function findSkinNames(html) {
-  const results = [];
-
-  const regex =
-    /SKIN APPRECIATION-[^<"'=\n]{1,150}/gi;
-
-  for (const match of html.matchAll(regex)) {
-    const value = match[0]
-      .replace(/^SKIN APPRECIATION-/i, "")
-      .trim();
-
-    if (value && !results.includes(value)) {
-      results.push(value);
-    }
-  }
-
-  return results;
-}
-
-function findHeroAssetPaths(html) {
-  const regex =
-    /\/zlkdatasys\/ip\/hero\/en\/[^"'<> ]+\.(?:jpg|jpeg|png|webp)/gi;
-
-  return [
-    ...new Set(
-      [...html.matchAll(regex)].map(
-        (match) => match[0]
-      )
-    ),
-  ];
-}
-
 async function main() {
   console.log(
     "HoKStation Official Data Sync Engine"
   );
 
   console.log(
-    "Parsing official HoK hero data..."
+    "Official Hero DB Write Test"
   );
 
   console.log(OFFICIAL_HERO_URL);
 
+  // 1. Download official hero page
   const response = await fetch(
     OFFICIAL_HERO_URL,
     {
@@ -120,61 +101,76 @@ async function main() {
     `Official hero page downloaded: ${html.length} characters`
   );
 
-  if (html.length < 5000) {
-    throw new Error(
-      "Official hero page response is unexpectedly small."
-    );
-  }
-
+  // 2. Parse official data
   const hero = parseHeroVariables(html);
-  const skins = findSkinNames(html);
-  const assets = findHeroAssetPaths(html);
 
   console.log("");
-  console.log("=== OFFICIAL HERO PARSED DATA ===");
-
+  console.log("=== OFFICIAL HERO DATA ===");
   console.log(`Hero ID: ${hero.id}`);
   console.log(`Hero Name: ${hero.name}`);
   console.log(
-    `Chinese Name: ${hero.chineseName || "Not provided"}`
+    `Chinese Name: ${
+      hero.chineseName || "Not provided"
+    }`
   );
   console.log(`Height: ${hero.height}`);
 
+  // 3. Prepare DB record
+  const heroRecord = {
+    id: hero.id,
+    name: hero.name,
+  };
+
   console.log("");
+  console.log("=== DATABASE WRITE ===");
   console.log(
-    `Skin names detected: ${skins.length}`
+    JSON.stringify(heroRecord, null, 2)
   );
 
-  skins.forEach((skin, index) => {
-    console.log(
-      `Skin ${index + 1}: ${skin}`
+  // 4. Upsert into heroes
+  const result = await supabase(
+    "heroes?on_conflict=id",
+    {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify(heroRecord),
+    }
+  );
+
+  console.log("");
+  console.log(
+    `Database rows returned: ${
+      Array.isArray(result)
+        ? result.length
+        : 0
+    }`
+  );
+
+  if (!Array.isArray(result) || result.length === 0) {
+    throw new Error(
+      "Database write returned no rows."
     );
-  });
+  }
 
-  console.log("");
   console.log(
-    `Official hero asset paths detected: ${assets.length}`
-  );
-
-  assets.forEach((asset, index) => {
-    console.log(
-      `Asset ${index + 1}: ${asset}`
-    );
-  });
-
-  console.log("");
-  console.log(
-    "Database write: SKIPPED"
+    `Database hero ID: ${result[0].id}`
   );
 
   console.log(
-    "Official Hero Parser Test: PASS"
+    `Database hero name: ${result[0].name}`
+  );
+
+  console.log("");
+  console.log(
+    "Official Hero DB Write Test: PASS"
   );
 }
 
 main().catch((error) => {
   console.error(
-    "Official hero parser failed:"
+    "Official hero DB write failed:"
   );
 
   console.error(error.message);
